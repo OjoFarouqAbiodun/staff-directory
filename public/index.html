@@ -1,0 +1,554 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Staff Directory</title>
+    <meta
+      name="description"
+      content="Find and connect with people across the organization."
+    />
+    <link rel="icon" href="/assets/images/placeholders/avatar.svg" type="image/svg+xml" />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="/assets/css/styles.css" />
+    <script src="/assets/js/api.js"></script>
+    <script src="/assets/js/ui.js"></script>
+    <script src="/assets/js/filters.js"></script>
+    <script src="/assets/js/modal.js"></script>
+    <script src="/assets/js/app.js"></script>
+  </head>
+
+  <body class="h-full bg-stone-50 text-stone-900 antialiased">
+    <a
+      href="#main-content"
+      class="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:rounded-md focus:bg-stone-900 focus:px-4 focus:py-2 focus:text-sm focus:font-medium focus:text-white"
+    >
+      Skip to main content
+    </a>
+
+    <div class="flex min-h-full">
+      <!-- Sidebar -->
+      <aside
+        class="hidden w-64 shrink-0 flex-col border-r border-stone-200 bg-white lg:sticky lg:top-0 lg:flex lg:h-screen lg:self-start lg:overflow-y-auto"
+        aria-label="Main navigation"
+      >
+        <div class="flex items-center gap-3 px-6 py-6">
+          <span
+            class="flex h-9 w-9 items-center justify-center rounded-lg bg-teal-700 text-sm font-semibold text-white"
+            aria-hidden="true"
+            >SD</span
+          >
+          <div class="min-w-0">
+            <p class="truncate text-sm font-semibold text-stone-900">Staff Directory</p>
+            <p class="truncate text-xs text-stone-500">Internal</p>
+          </div>
+        </div>
+
+        <nav class="flex-1 px-3 py-2" aria-label="Directory">
+          <p class="px-3 pb-2 text-xs font-medium uppercase tracking-wide text-stone-400">
+            Browse
+          </p>
+          <a
+            href="#"
+            aria-current="page"
+            class="flex items-center gap-3 rounded-md bg-stone-100 px-3 py-2 text-sm font-medium text-stone-900 transition-colors duration-200"
+          >
+            <svg
+              class="h-4 w-4 text-teal-700"
+              viewBox="0 0 20 20"
+              fill="currentColor"
+              aria-hidden="true"
+            >
+              <path
+                d="M7 3a3 3 0 1 0 0 6 3 3 0 0 0 0-6ZM2.5 9a1 1 0 0 1 1-1h7a1 1 0 0 1 1 1v6a1 1 0 0 1-1 1h-7a1 1 0 0 1-1-1V9Zm11.5.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5ZM13 15h4.5a1 1 0 0 0 1-1v-3a1 1 0 0 0-1-1H13v5Z"
+              />
+            </svg>
+            Directory
+          </a>
+          <a
+            href="#"
+            class="mt-1 flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-stone-600 transition-colors duration-200 hover:bg-stone-50 hover:text-stone-900"
+          >
+            <svg
+              class="h-4 w-4 text-stone-400"
+              viewBox="0 0 20 20"
+              fill="currentColor"
+              aria-hidden="true"
+            >
+              <path
+                d="M3 5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5Zm2 3h10V5H5v3Zm0 2v5h10v-5H5Z"
+              />
+            </svg>
+            Departments
+            <span class="ml-auto text-xs text-stone-400">6</span>
+          </a>
+        </nav>
+
+        <div class="border-t border-stone-200 px-6 py-4">
+          <p class="text-xs text-stone-500">Rids Cloud Digital Solution</p>
+          <p class="mt-0.5 text-xs text-stone-400">People &amp; Operations</p>
+        </div>
+      </aside>
+
+      <!-- Mobile header -->
+      <div class="flex min-w-0 flex-1 flex-col">
+        <header
+          class="sticky top-0 z-20 flex items-center gap-3 border-b border-stone-200 bg-white/95 px-4 py-3 backdrop-blur lg:hidden"
+        >
+          <span
+            class="flex h-8 w-8 items-center justify-center rounded-lg bg-teal-700 text-xs font-semibold text-white"
+            aria-hidden="true"
+            >SD</span
+          >
+          <p class="truncate text-sm font-semibold text-stone-900">Staff Directory</p>
+        </header>
+
+        <main id="main-content" class="flex-1 px-4 py-8 sm:px-6 lg:px-10 lg:py-10">
+          <div class="mx-auto w-full max-w-6xl">
+            <!-- Page header -->
+            <div class="flex flex-wrap items-end justify-between gap-4">
+              <div>
+                <h1 class="text-2xl font-semibold tracking-tight text-stone-900 sm:text-3xl">
+                  Staff Directory
+                </h1>
+                <p class="mt-1.5 text-sm text-stone-500">
+                  Find and connect with people across the organization.
+                </p>
+              </div>
+              <p class="text-sm text-stone-400" aria-hidden="true">Updated today</p>
+            </div>
+
+            <!-- Search -->
+            <div class="mt-8">
+              <label for="search-input" class="sr-only">Search staff</label>
+              <div class="relative">
+                <svg
+                  class="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-400"
+                  viewBox="0 0 20 20"
+                  fill="currentColor"
+                  aria-hidden="true"
+                >
+                  <path
+                    fill-rule="evenodd"
+                    d="M9 3.5a5.5 5.5 0 1 0 3.4 9.84l3.13 3.13a.75.75 0 1 0 1.06-1.06l-3.13-3.13A5.5 5.5 0 0 0 9 3.5ZM5 9a4 4 0 1 1 8 0 4 4 0 0 1-8 0Z"
+                    clip-rule="evenodd"
+                  />
+                </svg>
+                <input
+                  id="search-input"
+                  type="search"
+                  autocomplete="off"
+                  placeholder="Search by name, email, or job title..."
+                  class="w-full rounded-lg border border-stone-200 bg-white py-3 pl-11 pr-4 text-sm text-stone-900 placeholder:text-stone-400 shadow-sm transition-all duration-200 focus:border-teal-600 focus:outline-none focus:ring-2 focus:ring-teal-600/20"
+                />
+              </div>
+            </div>
+
+            <!-- Filters -->
+            <div class="mt-4 flex flex-wrap items-center gap-3">
+              <div class="flex min-w-0 flex-1 flex-col gap-3 sm:flex-row">
+                <div class="min-w-0 flex-1">
+                  <label for="filter-department" class="sr-only">Filter by department</label>
+                  <select
+                    id="filter-department"
+                    class="w-full appearance-none rounded-lg border border-stone-200 bg-white px-3 py-2.5 text-sm text-stone-700 shadow-sm transition-colors duration-200 hover:border-stone-300 focus:border-teal-600 focus:outline-none focus:ring-2 focus:ring-teal-600/20"
+                  >
+                    <option value="">All departments</option>
+                  </select>
+                </div>
+
+                <div class="min-w-0 flex-1">
+                  <label for="filter-role" class="sr-only">Filter by role</label>
+                  <select
+                    id="filter-role"
+                    class="w-full appearance-none rounded-lg border border-stone-200 bg-white px-3 py-2.5 text-sm text-stone-700 shadow-sm transition-colors duration-200 hover:border-stone-300 focus:border-teal-600 focus:outline-none focus:ring-2 focus:ring-teal-600/20"
+                  >
+                    <option value="">All roles</option>
+                  </select>
+                </div>
+
+                <div class="min-w-0 flex-1">
+                  <label for="filter-status" class="sr-only">Filter by employment status</label>
+                  <select
+                    id="filter-status"
+                    class="w-full appearance-none rounded-lg border border-stone-200 bg-white px-3 py-2.5 text-sm text-stone-700 shadow-sm transition-colors duration-200 hover:border-stone-300 focus:border-teal-600 focus:outline-none focus:ring-2 focus:ring-teal-600/20"
+                  >
+                    <option value="">All statuses</option>
+                    <option>Active</option>
+                    <option>On Leave</option>
+                    <option>Inactive</option>
+                  </select>
+                </div>
+              </div>
+
+              <button
+                id="clear-filters"
+                type="button"
+                class="rounded-lg border border-stone-200 bg-white px-3.5 py-2.5 text-sm font-medium text-stone-600 shadow-sm transition-colors duration-200 hover:border-stone-300 hover:bg-stone-50 hover:text-stone-900"
+              >
+                Clear filters
+              </button>
+            </div>
+
+            <!-- Directory summary -->
+            <div class="mt-10 flex items-baseline justify-between border-b border-stone-200 pb-3">
+              <h2 class="text-sm font-semibold text-stone-900">All staff</h2>
+              <p id="staff-count" class="text-sm text-stone-500">Loading&hellip;</p>
+            </div>
+
+            <!-- Loading state (hidden until wired up) -->
+            <div id="loading-state" class="mt-6 hidden" aria-live="polite" aria-busy="true">
+              <p class="text-sm text-stone-500">Loading staff&hellip;</p>
+              <div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+                <div class="h-40 animate-pulse rounded-lg border border-stone-200 bg-stone-100"></div>
+                <div class="h-40 animate-pulse rounded-lg border border-stone-200 bg-stone-100"></div>
+                <div class="h-40 animate-pulse rounded-lg border border-stone-200 bg-stone-100"></div>
+                <div class="h-40 animate-pulse rounded-lg border border-stone-200 bg-stone-100"></div>
+              </div>
+            </div>
+
+            <!-- Empty state (hidden until wired up) -->
+            <div
+              id="empty-state"
+              class="mt-6 hidden rounded-lg border border-dashed border-stone-300 bg-white px-6 py-16 text-center"
+            >
+              <p class="text-sm font-medium text-stone-900">No staff members found.</p>
+              <p class="mt-1 text-sm text-stone-500">
+                Try adjusting your search or filters.
+              </p>
+            </div>
+
+            <!-- Error state (hidden until wired up) -->
+            <div
+              id="error-state"
+              class="mt-6 hidden rounded-lg border border-red-200 bg-red-50 px-6 py-8 text-center"
+              role="alert"
+            >
+              <p id="error-state-message" class="text-sm font-medium text-red-900">
+                Unable to load the directory right now.
+              </p>
+              <p id="error-state-detail" class="mt-1 text-sm text-red-700">
+                Please try again.
+              </p>
+              <button
+                id="error-retry"
+                type="button"
+                class="mt-4 rounded-md border border-red-200 bg-white px-3.5 py-2 text-sm font-medium text-red-800 transition-colors duration-200 hover:bg-red-100"
+              >
+                Try again
+              </button>
+            </div>
+
+            <!-- Staff grid: static placeholders, replaced by API rendering later -->
+            <ul
+              id="staff-grid"
+              class="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4"
+            >
+              <!-- Placeholder card 1 -->
+              <li>
+                <button
+                  type="button"
+                  class="group flex h-full w-full flex-col rounded-lg border border-stone-200 bg-white p-5 text-left shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-stone-300 hover:shadow-md"
+                >
+                  <div class="flex items-start justify-between gap-3">
+                    <img
+                      src="/assets/images/placeholders/avatar.svg"
+                      alt=""
+                      class="h-11 w-11 rounded-full"
+                      width="44"
+                      height="44"
+                    />
+                    <span
+                      class="rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700"
+                      >Active</span
+                    >
+                  </div>
+                  <p class="mt-4 text-sm font-semibold text-stone-900">Amara Okonkwo</p>
+                  <p class="mt-0.5 text-sm text-stone-500">Senior Backend Developer</p>
+                  <div
+                    class="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-stone-500"
+                  >
+                    <span class="text-stone-600">Engineering</span>
+                    <span aria-hidden="true" class="text-stone-300">&middot;</span>
+                    <span>Senior Developer</span>
+                  </div>
+                  <p class="mt-2 text-xs text-stone-400">Lagos, Nigeria</p>
+                </button>
+              </li>
+
+              <!-- Placeholder card 2 -->
+              <li>
+                <button
+                  type="button"
+                  class="group flex h-full w-full flex-col rounded-lg border border-stone-200 bg-white p-5 text-left shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-stone-300 hover:shadow-md"
+                >
+                  <div class="flex items-start justify-between gap-3">
+                    <img
+                      src="/assets/images/placeholders/avatar.svg"
+                      alt=""
+                      class="h-11 w-11 rounded-full"
+                      width="44"
+                      height="44"
+                    />
+                    <span
+                      class="rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700"
+                      >Active</span
+                    >
+                  </div>
+                  <p class="mt-4 text-sm font-semibold text-stone-900">Chidinma Eze</p>
+                  <p class="mt-0.5 text-sm text-stone-500">Senior UI/UX Designer</p>
+                  <div
+                    class="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-stone-500"
+                  >
+                    <span class="text-stone-600">Design</span>
+                    <span aria-hidden="true" class="text-stone-300">&middot;</span>
+                    <span>UI/UX Designer</span>
+                  </div>
+                  <p class="mt-2 text-xs text-stone-400">Enugu, Nigeria</p>
+                </button>
+              </li>
+
+              <!-- Placeholder card 3 -->
+              <li>
+                <button
+                  type="button"
+                  class="group flex h-full w-full flex-col rounded-lg border border-stone-200 bg-white p-5 text-left shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-stone-300 hover:shadow-md"
+                >
+                  <div class="flex items-start justify-between gap-3">
+                    <img
+                      src="/assets/images/placeholders/avatar.svg"
+                      alt=""
+                      class="h-11 w-11 rounded-full"
+                      width="44"
+                      height="44"
+                    />
+                    <span
+                      class="rounded-full bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700"
+                      >On Leave</span
+                    >
+                  </div>
+                  <p class="mt-4 text-sm font-semibold text-stone-900">Oliver Bennett</p>
+                  <p class="mt-0.5 text-sm text-stone-500">Fullstack Developer</p>
+                  <div
+                    class="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-stone-500"
+                  >
+                    <span class="text-stone-600">Engineering</span>
+                    <span aria-hidden="true" class="text-stone-300">&middot;</span>
+                    <span>Software Developer</span>
+                  </div>
+                  <p class="mt-2 text-xs text-stone-400">Melbourne, Australia</p>
+                </button>
+              </li>
+
+              <!-- Placeholder card 4 -->
+              <li>
+                <button
+                  type="button"
+                  class="group flex h-full w-full flex-col rounded-lg border border-stone-200 bg-white p-5 text-left shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-stone-300 hover:shadow-md"
+                >
+                  <div class="flex items-start justify-between gap-3">
+                    <img
+                      src="/assets/images/placeholders/avatar.svg"
+                      alt=""
+                      class="h-11 w-11 rounded-full"
+                      width="44"
+                      height="44"
+                    />
+                    <span
+                      class="rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700"
+                      >Active</span
+                    >
+                  </div>
+                  <p class="mt-4 text-sm font-semibold text-stone-900">Grace Mbeki</p>
+                  <p class="mt-0.5 text-sm text-stone-500">Head of People</p>
+                  <div
+                    class="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-stone-500"
+                  >
+                    <span class="text-stone-600">Human Resources</span>
+                    <span aria-hidden="true" class="text-stone-300">&middot;</span>
+                    <span>HR Officer</span>
+                  </div>
+                  <p class="mt-2 text-xs text-stone-400">Cape Town, South Africa</p>
+                </button>
+              </li>
+
+              <!-- Placeholder card 5 -->
+              <li>
+                <button
+                  type="button"
+                  class="group flex h-full w-full flex-col rounded-lg border border-stone-200 bg-white p-5 text-left shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-stone-300 hover:shadow-md"
+                >
+                  <div class="flex items-start justify-between gap-3">
+                    <img
+                      src="/assets/images/placeholders/avatar.svg"
+                      alt=""
+                      class="h-11 w-11 rounded-full"
+                      width="44"
+                      height="44"
+                    />
+                    <span
+                      class="rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700"
+                      >Active</span
+                    >
+                  </div>
+                  <p class="mt-4 text-sm font-semibold text-stone-900">Beatriz Almeida</p>
+                  <p class="mt-0.5 text-sm text-stone-500">Finance Manager</p>
+                  <div
+                    class="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-stone-500"
+                  >
+                    <span class="text-stone-600">Finance</span>
+                    <span aria-hidden="true" class="text-stone-300">&middot;</span>
+                    <span>Accountant</span>
+                  </div>
+                  <p class="mt-2 text-xs text-stone-400">Lisbon, Portugal</p>
+                </button>
+              </li>
+
+              <!-- Placeholder card 6 -->
+              <li>
+                <button
+                  type="button"
+                  class="group flex h-full w-full flex-col rounded-lg border border-stone-200 bg-white p-5 text-left shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-stone-300 hover:shadow-md"
+                >
+                  <div class="flex items-start justify-between gap-3">
+                    <img
+                      src="/assets/images/placeholders/avatar.svg"
+                      alt=""
+                      class="h-11 w-11 rounded-full"
+                      width="44"
+                      height="44"
+                    />
+                    <span
+                      class="rounded-full bg-stone-100 px-2 py-0.5 text-xs font-medium text-stone-600"
+                      >Inactive</span
+                    >
+                  </div>
+                  <p class="mt-4 text-sm font-semibold text-stone-900">Yusuf Bello</p>
+                  <p class="mt-0.5 text-sm text-stone-500">Frontend Developer</p>
+                  <div
+                    class="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-stone-500"
+                  >
+                    <span class="text-stone-600">Engineering</span>
+                    <span aria-hidden="true" class="text-stone-300">&middot;</span>
+                    <span>Software Developer</span>
+                  </div>
+                  <p class="mt-2 text-xs text-stone-400">Kano, Nigeria</p>
+                </button>
+              </li>
+            </ul>
+          </div>
+        </main>
+      </div>
+    </div>
+
+    <!-- Staff profile modal shell (hidden; behaviour added in a later task) -->
+    <div
+      id="profile-modal"
+      class="fixed inset-0 z-40 hidden items-center justify-center p-4"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="profile-modal-name"
+      aria-hidden="true"
+    >
+      <div
+        id="profile-modal-backdrop"
+        class="modal-backdrop absolute inset-0 bg-stone-900/40"
+        aria-hidden="true"
+      ></div>
+
+      <div
+        class="modal-panel relative z-10 max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-xl border border-stone-200 bg-white p-6 shadow-xl"
+        role="document"
+      >
+        <div class="flex items-start justify-between gap-4">
+          <div class="flex items-center gap-4">
+            <img
+              id="profile-modal-avatar"
+              src="/assets/images/placeholders/avatar.svg"
+              alt=""
+              class="h-16 w-16 rounded-full"
+              width="64"
+              height="64"
+            />
+            <span
+              id="profile-modal-avatar-initials"
+              class="hidden h-16 w-16 shrink-0 items-center justify-center rounded-full bg-stone-200 text-lg font-semibold text-stone-600"
+              aria-hidden="true"
+            ></span>
+            <div>
+              <h2 id="profile-modal-name" class="text-lg font-semibold text-stone-900">
+                Amara Okonkwo
+              </h2>
+              <p id="profile-modal-title" class="text-sm text-stone-500">
+                Senior Backend Developer
+              </p>
+              <span
+                id="profile-modal-status"
+                class="mt-2 inline-block rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700"
+                >Active</span
+              >
+            </div>
+          </div>
+
+          <button
+            id="profile-modal-close"
+            type="button"
+            class="-mr-1 -mt-1 rounded-md p-1.5 text-stone-400 transition-colors duration-200 hover:bg-stone-100 hover:text-stone-700"
+            aria-label="Close profile"
+          >
+            <svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+              <path
+                d="M6.28 5.22a.75.75 0 0 0-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 1 0 1.06 1.06L10 11.06l3.72 3.72a.75.75 0 1 0 1.06-1.06L11.06 10l3.72-3.72a.75.75 0 0 0-1.06-1.06L10 8.94 6.28 5.22Z"
+              />
+            </svg>
+          </button>
+        </div>
+
+        <dl class="mt-6 grid grid-cols-1 gap-x-6 gap-y-4 sm:grid-cols-2">
+          <div>
+            <dt class="text-xs font-medium uppercase tracking-wide text-stone-400">
+              Department
+            </dt>
+            <dd id="profile-modal-department" class="mt-1 text-sm text-stone-900">Engineering</dd>
+          </div>
+          <div>
+            <dt class="text-xs font-medium uppercase tracking-wide text-stone-400">Role</dt>
+            <dd id="profile-modal-role" class="mt-1 text-sm text-stone-900">Senior Developer</dd>
+          </div>
+          <div>
+            <dt class="text-xs font-medium uppercase tracking-wide text-stone-400">Email</dt>
+            <dd class="mt-1 text-sm">
+              <a
+                id="profile-modal-email"
+                href="mailto:amara.okonkwo@brightpath.example"
+                class="text-teal-700 underline-offset-2 hover:underline"
+                >amara.okonkwo@brightpath.example</a
+              >
+            </dd>
+          </div>
+          <div>
+            <dt class="text-xs font-medium uppercase tracking-wide text-stone-400">Phone</dt>
+            <dd id="profile-modal-phone" class="mt-1 text-sm text-stone-900">+234 802 411 5521</dd>
+          </div>
+          <div class="sm:col-span-2">
+            <dt class="text-xs font-medium uppercase tracking-wide text-stone-400">
+              Location
+            </dt>
+            <dd id="profile-modal-location" class="mt-1 text-sm text-stone-900">
+              Lagos, Nigeria
+            </dd>
+          </div>
+          <div class="sm:col-span-2">
+            <dt class="text-xs font-medium uppercase tracking-wide text-stone-400">
+              Biography
+            </dt>
+            <dd id="profile-modal-bio" class="mt-1 text-sm leading-relaxed text-stone-600">
+              Amara has spent eight years building reliable backend services and leads the
+              platform reliability workstream.
+            </dd>
+          </div>
+        </dl>
+      </div>
+    </div>
+  </body>
+</html>
