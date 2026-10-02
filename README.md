@@ -118,7 +118,6 @@ staff-directory/
 ├── package-lock.json               # Exact dependency versions
 ├── server.js                       # Server entry point
 ├── PROJECT_SPEC.md                 # Authoritative technical specification
-├── SIWES_PROJECT_PLAN.md           # Academic project roadmap
 └── README.md                       # This file
 ```
 
@@ -134,8 +133,7 @@ staff-directory/
   `staff-directory.db-wal` and `staff-directory.db-shm` files beside it while the server is
   running; these are normal and can be ignored.
 - **`server.js`** — starts the Express application.
-- **`PROJECT_SPEC.md` / `SIWES_PROJECT_PLAN.md`** — the technical specification and the
-  academic roadmap this project was built against.
+- **`PROJECT_SPEC.md`** — the authoritative technical specification this project was built against.
 
 ---
 

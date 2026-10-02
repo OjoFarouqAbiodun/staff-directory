@@ -1900,9 +1900,9 @@ confirmed against live behaviour.
 
 ### 6.3 Test Cases and Results
 
-The following table reproduces the final quality assurance results recorded in Section 13 of
-`SIWES_PROJECT_PLAN.md`. The results are those actually recorded during verification; no result in
-this table has been invented, and no test has been marked as passing without a recorded observation.
+The following table records the final quality assurance results for this project. Every result was
+observed during verification; no result in this table has been invented, and no test has been marked
+as passing without a recorded observation.
 
 | ID | Test Description | Expected Result | Actual Result | Status |
 |---|---|---|---|---|
@@ -2076,8 +2076,8 @@ such file is claimed.**
 | 13 | System architecture diagram | `screenshots/13-system-architecture.png` |
 
 > **Note on Figure 08.** Responsive behavior was verified during final QA at 375px, 768px and 1440px;
-> no standalone screenshot was retained. The verification is recorded in `SIWES_PROJECT_PLAN.md`
-> Section 13 (test case TC-19) and described in `README.md`. There is deliberately **no**
+> no standalone screenshot was retained. The verification is recorded as test case TC-19 in Section
+> 6.3 of this report and described in `README.md` Section 14. There is deliberately **no**
 > `screenshots/08-*.png` file in the repository, and no reference to such a file should be added when
 > the report is typeset. If a figure is required in this position in the submitted document, a
 > screenshot must be captured at that time; it cannot be reconstructed from the existing evidence.
@@ -2193,13 +2193,11 @@ make the system operational rather than illustrative.
 1. **[Student Name]**, *Design and Implementation of a Staff Directory Web Application*, SIWES project
    report, **[Institution Name]**, **[SIWES Year]**. *(This document.)*
 2. *PROJECT_SPEC.md* — project specification and requirements. Project repository, root directory.
-3. *SIWES_PROJECT_PLAN.md* — development plan, task breakdown and recorded final QA results
-   (Section 13). Project repository, root directory.
-4. *README.md* — project overview, technology stack, API reference, usage instructions and
+3. *README.md* — project overview, technology stack, API reference, usage instructions and
    documentation of verified responsive behaviour (Section 14). Project repository, root directory.
-5. `src/database/schema.sql` — authoritative database schema. Project repository.
-6. `screenshots/12-er-diagram.png` — entity–relationship diagram. Project repository.
-7. `screenshots/13-system-architecture.png` — system architecture diagram. Project repository.
+4. `src/database/schema.sql` — authoritative database schema. Project repository.
+5. `screenshots/12-er-diagram.png` — entity–relationship diagram. Project repository.
+6. `screenshots/13-system-architecture.png` — system architecture diagram. Project repository.
 
 ### B. Official Technology Documentation
 
@@ -2388,7 +2386,6 @@ staff-directory/
 ├── .gitignore                    Excludes node_modules and the local database file
 ├── README.md                     Project documentation
 ├── PROJECT_SPEC.md               Specification and requirements
-├── SIWES_PROJECT_PLAN.md         Development plan and recorded QA results
 ├── SIWES_PROJECT_REPORT.md       This report
 │
 ├── data/
