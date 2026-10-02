@@ -453,14 +453,16 @@ control, so it is not hardened for public deployment.
 
 ## 14. Responsive Design
 
-The interface adapts to three layouts:
+The layout is driven entirely by Tailwind's responsive breakpoints. The behaviour is:
 
-- **Desktop / laptop** — a fixed left sidebar that stays in view while the directory scrolls,
-  beside a multi-column grid of staff cards.
-- **Tablet** — the same layout with a reduced grid.
-- **Mobile** — the sidebar is replaced by a compact header, and the cards reflow to a single
-  column; the search box, filters and profile modal stay usable and nothing overflows
-  horizontally.
+- **Below 1024px** — the fixed sidebar is hidden and replaced by a compact mobile header, and the
+  staff cards sit in a single column. The search box, filters and profile modal stay usable and
+  nothing overflows horizontally.
+- **From 640px** — the grid becomes two columns, so a tablet at 768px gets the two-column staff
+  grid under the mobile header.
+- **From 1024px** — the fixed left sidebar appears (staying in view while the directory scrolls)
+  and the mobile header is replaced by the desktop page header.
+- **From 1280px** — the grid grows to three columns, and from 1536px to four columns.
 
 The profile modal is centered in the viewport, fits small screens, and can be dismissed with the
 close button, the backdrop, or the Escape key.
@@ -564,5 +566,6 @@ platform, and audit logs.
 
 ## 18. License
 
-This project is currently an academic/SIWES project and does not include a separate open-source
-license.
+The project metadata in `package.json` declares the license as `MIT`. No separate `LICENSE` file is
+currently included in the repository, so this statement records the declared metadata only and does
+not reproduce the full MIT license text.

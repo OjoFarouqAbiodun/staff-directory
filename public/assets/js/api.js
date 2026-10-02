@@ -1,16 +1,6 @@
-/**
- * Staff Directory - API client.
- *
- * Thin wrapper around the REST API using the browser's native fetch().
- * Responsibilities: building URLs, encoding query parameters, and turning
- * responses into either a plain data value or a thrown Error.
- *
- * Deliberately contains no rendering, DOM, or state-management logic.
- */
 
 const BASE_URL = '/api';
 
-/** Filter keys the backend understands. Anything else is ignored. */
 const STAFF_FILTERS = ['search', 'department', 'role', 'status'];
 
 class ApiError extends Error {
@@ -21,10 +11,6 @@ class ApiError extends Error {
   }
 }
 
-/**
- * Pulls the server-provided message out of the project error envelope.
- * Returns null when the body does not follow the expected contract.
- */
 function extractServerMessage(payload) {
   if (!payload || typeof payload !== 'object') {
     return null;
@@ -37,10 +23,6 @@ function extractServerMessage(payload) {
   return null;
 }
 
-/**
- * Performs a request and returns the `data` value from a successful response.
- * Any non-2xx response, malformed JSON, or network failure rejects.
- */
 async function request(path) {
   let response;
 
@@ -81,11 +63,6 @@ async function request(path) {
   return payload.data;
 }
 
-/**
- * Builds a query string from supported, non-empty filters only.
- * Unsupported keys are ignored rather than rejected, so callers can pass
- * wider objects without leaking unexpected parameters to the server.
- */
 function buildStaffQuery(filters) {
   const params = new URLSearchParams();
 
@@ -114,43 +91,22 @@ function buildStaffQuery(filters) {
   return query ? '?' + query : '';
 }
 
-/**
- * Fetches staff, optionally narrowed by search/department/role/status.
- * @returns {Promise<Array<object>>}
- */
 async function getStaff(filters) {
   return request('/staff' + buildStaffQuery(filters));
 }
 
-/**
- * Fetches a single staff member.
- * Rejects with a 404 ApiError when the record does not exist.
- * @returns {Promise<object>}
- */
 async function getStaffById(id) {
   return request('/staff/' + encodeURIComponent(id));
 }
 
-/**
- * Fetches all departments.
- * @returns {Promise<Array<object>>}
- */
 async function getDepartments() {
   return request('/departments');
 }
 
-/**
- * Fetches all roles.
- * @returns {Promise<Array<object>>}
- */
 async function getRoles() {
   return request('/roles');
 }
 
-/**
- * Fetches API health status.
- * @returns {Promise<object>}
- */
 async function getHealth() {
   return request('/health');
 }

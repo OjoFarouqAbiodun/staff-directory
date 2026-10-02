@@ -1,12 +1,3 @@
-/**
- * Staff Directory - UI rendering layer.
- *
- * Responsibilities: turn data into DOM. This module never talks to the
- * network - every value it renders is handed to it by app.js.
- *
- * All staff-provided text is written with textContent. No HTML strings are
- * built, so data can never be interpreted as markup.
- */
 
 (function () {
   'use strict';
@@ -22,19 +13,8 @@
   const ERROR_DETAIL_ID = 'error-state-detail';
   const HIDDEN_CLASS = 'hidden';
 
-  /**
-   * Local placeholder shipped with the project. Used when a record has no
-   * usable avatar_url so the page never requests a broken or external image.
-   */
   const FALLBACK_AVATAR = '/assets/images/placeholders/avatar.svg';
 
-  /**
-   * Badge styling per seeded employment status.
-   * Tailwind's CDN build scans the served source for literal class names, so
-   * these must stay as complete literal strings rather than being composed.
-   * Any unrecognised status falls back to neutral styling and renders its
-   * raw text; no statuses are invented here.
-   */
   const STATUS_BADGE_CLASSES = {
     Active: 'rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700',
     'On Leave': 'rounded-full bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700',
@@ -42,7 +22,6 @@
   };
   const DEFAULT_BADGE_CLASSES = 'rounded-full bg-stone-100 px-2 py-0.5 text-xs font-medium text-stone-600';
 
-  // Card layout, copied from the static shell so rendering matches the design.
   const CARD_CLASSES =
     'group flex h-full w-full flex-col rounded-lg border border-stone-200 bg-white p-5 text-left shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-stone-300 hover:shadow-md';
   const CARD_HEADER_CLASSES = 'flex items-start justify-between gap-3';
@@ -55,12 +34,10 @@
   const AVATAR_INITIALS_CLASSES =
     'flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-stone-200 text-xs font-semibold text-stone-600';
 
-  /** Reads a string field, returning '' for anything unusable. */
   function readText(value) {
     return typeof value === 'string' ? value.trim() : '';
   }
 
-  /** Creates an element, optionally assigning a class and text content. */
   function createElement(tagName, className, text) {
     const element = document.createElement(tagName);
 
@@ -75,7 +52,6 @@
     return element;
   }
 
-  /** Builds up to two uppercase initials from a record's name fields. */
   function buildInitials(firstName, lastName) {
     const first = firstName ? firstName.charAt(0) : '';
     const last = lastName ? lastName.charAt(0) : '';
@@ -83,11 +59,6 @@
     return (first + last).toUpperCase() || '?';
   }
 
-  /**
-   * Builds the card's avatar. A real avatar_url is used when present;
-   * otherwise a local placeholder image is shown, and if the record has no
-   * usable URL at all an initials badge is rendered instead of a broken img.
-   */
   function buildAvatar(staffMember) {
     const avatarUrl = readText(staffMember.avatar_url);
 
@@ -112,7 +83,6 @@
     return initials;
   }
 
-  /** Builds the employment status badge. */
   function buildStatusBadge(status) {
     const label = readText(status);
     const badge = createElement('span', STATUS_BADGE_CLASSES[label] || DEFAULT_BADGE_CLASSES, label);
@@ -120,10 +90,6 @@
     return badge;
   }
 
-  /**
-   * Renders a single staff member as an <li> containing the existing card
-   * structure. Returns the list item so callers can place it in the grid.
-   */
   function renderStaffCard(staffMember) {
     const member = staffMember || {};
     const item = document.createElement('li');
@@ -178,11 +144,6 @@
     return item;
   }
 
-  /**
-   * Replaces the grid contents with cards for the supplied staff.
-   * This is what removes the static placeholder cards from the shell.
-   * An empty list simply leaves the grid empty.
-   */
   function renderStaffList(staff) {
     const grid = document.getElementById(STAFF_GRID_ID);
 
@@ -199,7 +160,6 @@
     grid.replaceChildren(fragment);
   }
 
-  /** Writes the staff summary count, pluralised from the real number. */
   function updateStaffCount(count) {
     const element = document.getElementById(STAFF_COUNT_ID);
 
@@ -216,22 +176,6 @@
     element.textContent = total === 1 ? '1 person' : total + ' people';
   }
 
-  // ---------------------------------------------------------------
-  // View state
-  //
-  // The shell already ships dedicated loading, empty and error
-  // containers. These helpers only toggle those existing elements;
-  // no new state containers are created and no layout is invented.
-  //
-  // The three states are mutually exclusive. Entering the loading or
-  // empty view also hides the grid, because an empty grid beside an
-  // empty/error message is misleading. The error state deliberately
-  // leaves grid visibility to the caller: a failed *filter* request
-  // keeps the previous successful list on screen, while a failed
-  // *initial* load clears it.
-  // ---------------------------------------------------------------
-
-  /** Shows or hides an existing state container. */
   function setContainerVisible(id, visible) {
     const element = document.getElementById(id);
 
@@ -242,11 +186,6 @@
     element.classList.toggle(HIDDEN_CLASS, !visible);
   }
 
-  /**
-   * Enters the loading view: the loading indicator is shown, the empty and
-   * error views are dismissed, and the grid is hidden so the shell's static
-   * placeholder cards are never shown next to the indicator.
-   */
   function showLoading() {
     setContainerVisible(EMPTY_STATE_ID, false);
     setContainerVisible(ERROR_STATE_ID, false);
@@ -256,12 +195,11 @@
 
     if (loading) {
       loading.classList.remove(HIDDEN_CLASS);
-      // The attribute ships as true; it is kept in step with the real state.
+
       loading.setAttribute('aria-busy', 'true');
     }
   }
 
-  /** Hides the loading indicator once a request settles. */
   function hideLoading() {
     const loading = document.getElementById(LOADING_STATE_ID);
 
@@ -273,7 +211,6 @@
     loading.setAttribute('aria-busy', 'false');
   }
 
-  /** Enters the empty view, used for both an empty database and no matches. */
   function showEmpty() {
     hideLoading();
     setContainerVisible(ERROR_STATE_ID, false);
@@ -281,16 +218,10 @@
     setContainerVisible(EMPTY_STATE_ID, true);
   }
 
-  /** Hides the empty view. */
   function hideEmpty() {
     setContainerVisible(EMPTY_STATE_ID, false);
   }
 
-  /**
-   * Enters the error view. The message is written with textContent, so a
-   * caller can never inject markup, and callers are expected to pass
-   * controlled, user-facing copy rather than a raw error object.
-   */
   function showError(message, detail) {
     hideLoading();
     setContainerVisible(EMPTY_STATE_ID, false);
@@ -309,15 +240,10 @@
     setContainerVisible(ERROR_STATE_ID, true);
   }
 
-  /** Hides the error view. */
   function hideError() {
     setContainerVisible(ERROR_STATE_ID, false);
   }
 
-  /**
-   * Shows or hides the staff grid. The grid is an existing container, so
-   * this only toggles its visibility.
-   */
   function setGridVisible(visible) {
     const grid = document.getElementById(STAFF_GRID_ID);
 
@@ -328,10 +254,6 @@
     grid.classList.toggle(HIDDEN_CLASS, !visible);
   }
 
-  /**
-   * Writes free-form summary text. Used when no count is known, so the
-   * summary does not keep claiming "Loading..." after a failure.
-   */
   function setStaffCountText(text) {
     const element = document.getElementById(STAFF_COUNT_ID);
 
@@ -340,13 +262,6 @@
     }
   }
 
-  /**
-   * Repopulates a select, keeping its existing "all" default option and
-   * adding one option per supplied record.
-   *
-   * Option values are the record *name* because the API filters on
-   * department/role name. The database id is still exposed via data-id.
-   */
   function populateSelect(selectId, records) {
     const select = document.getElementById(selectId);
 
@@ -382,12 +297,10 @@
     select.replaceChildren(fragment);
   }
 
-  /** Fills the Department filter select from the API. */
   function renderDepartments(departments) {
     populateSelect(DEPARTMENT_SELECT_ID, departments);
   }
 
-  /** Fills the Role filter select from the API. */
   function renderRoles(roles) {
     populateSelect(ROLE_SELECT_ID, roles);
   }

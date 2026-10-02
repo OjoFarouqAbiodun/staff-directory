@@ -27,7 +27,7 @@
     </a>
 
     <div class="flex min-h-full">
-      <!-- Sidebar -->
+
       <aside
         class="hidden w-64 shrink-0 flex-col border-r border-stone-200 bg-white lg:sticky lg:top-0 lg:flex lg:h-screen lg:self-start lg:overflow-y-auto"
         aria-label="Main navigation"
@@ -90,7 +90,6 @@
         </div>
       </aside>
 
-      <!-- Mobile header -->
       <div class="flex min-w-0 flex-1 flex-col">
         <header
           class="sticky top-0 z-20 flex items-center gap-3 border-b border-stone-200 bg-white/95 px-4 py-3 backdrop-blur lg:hidden"
@@ -105,7 +104,7 @@
 
         <main id="main-content" class="flex-1 px-4 py-8 sm:px-6 lg:px-10 lg:py-10">
           <div class="mx-auto w-full max-w-6xl">
-            <!-- Page header -->
+
             <div class="flex flex-wrap items-end justify-between gap-4">
               <div>
                 <h1 class="text-2xl font-semibold tracking-tight text-stone-900 sm:text-3xl">
@@ -118,7 +117,6 @@
               <p class="text-sm text-stone-400" aria-hidden="true">Updated today</p>
             </div>
 
-            <!-- Search -->
             <div class="mt-8">
               <label for="search-input" class="sr-only">Search staff</label>
               <div class="relative">
@@ -144,7 +142,6 @@
               </div>
             </div>
 
-            <!-- Filters -->
             <div class="mt-4 flex flex-wrap items-center gap-3">
               <div class="flex min-w-0 flex-1 flex-col gap-3 sm:flex-row">
                 <div class="min-w-0 flex-1">
@@ -190,13 +187,11 @@
               </button>
             </div>
 
-            <!-- Directory summary -->
             <div class="mt-10 flex items-baseline justify-between border-b border-stone-200 pb-3">
               <h2 class="text-sm font-semibold text-stone-900">All staff</h2>
               <p id="staff-count" class="text-sm text-stone-500">Loading&hellip;</p>
             </div>
 
-            <!-- Loading state (hidden until wired up) -->
             <div id="loading-state" class="mt-6 hidden" aria-live="polite" aria-busy="true">
               <p class="text-sm text-stone-500">Loading staff&hellip;</p>
               <div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
@@ -207,7 +202,6 @@
               </div>
             </div>
 
-            <!-- Empty state (hidden until wired up) -->
             <div
               id="empty-state"
               class="mt-6 hidden rounded-lg border border-dashed border-stone-300 bg-white px-6 py-16 text-center"
@@ -218,7 +212,6 @@
               </p>
             </div>
 
-            <!-- Error state (hidden until wired up) -->
             <div
               id="error-state"
               class="mt-6 hidden rounded-lg border border-red-200 bg-red-50 px-6 py-8 text-center"
@@ -239,12 +232,11 @@
               </button>
             </div>
 
-            <!-- Staff grid: static placeholders, replaced by API rendering later -->
             <ul
               id="staff-grid"
               class="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4"
             >
-              <!-- Placeholder card 1 -->
+
               <li>
                 <button
                   type="button"
@@ -276,7 +268,6 @@
                 </button>
               </li>
 
-              <!-- Placeholder card 2 -->
               <li>
                 <button
                   type="button"
@@ -308,7 +299,6 @@
                 </button>
               </li>
 
-              <!-- Placeholder card 3 -->
               <li>
                 <button
                   type="button"
@@ -340,7 +330,6 @@
                 </button>
               </li>
 
-              <!-- Placeholder card 4 -->
               <li>
                 <button
                   type="button"
@@ -372,7 +361,6 @@
                 </button>
               </li>
 
-              <!-- Placeholder card 5 -->
               <li>
                 <button
                   type="button"
@@ -404,7 +392,6 @@
                 </button>
               </li>
 
-              <!-- Placeholder card 6 -->
               <li>
                 <button
                   type="button"
@@ -441,7 +428,6 @@
       </div>
     </div>
 
-    <!-- Staff profile modal shell (hidden; behaviour added in a later task) -->
     <div
       id="profile-modal"
       class="fixed inset-0 z-40 hidden items-center justify-center p-4"

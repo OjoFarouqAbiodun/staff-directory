@@ -184,19 +184,34 @@ The project follows an incremental development process:
 | API error handling | Errors return structured JSON with appropriate status | Unknown API routes returned HTTP 404, invalid identifiers returned HTTP 400 and unexpected failures returned HTTP 500, all as structured JSON using the `{ success, error: { message } }` envelope. No stack traces were exposed to clients. | PASS |
 | Browser console errors | No JavaScript errors in console | The browser console recorded zero JavaScript errors, uncaught exceptions, unhandled promise rejections or unexpected failed resource requests throughout the browser test run. | PASS |
 
+Note on test numbering: this plan lists the tests as a single table of rows. The final report
+restates the same executed checks under sequential identifiers `TC-01` through `TC-21`, because the
+combined-filtering row above is presented there as two separately recorded cases (applying several
+filters together, and clearing/resetting them). The underlying checks and outcomes are identical;
+the difference is presentation only, and no additional test case was invented to reach either
+count.
+
 ## 14. Evidence and Screenshot Checklist
 
-- [ ] Main directory (home view)
-- [ ] Search results
-- [ ] Department filtering
-- [ ] Role filtering
-- [ ] Combined filters
-- [ ] Staff profile (modal)
-- [ ] Empty state
-- [ ] Responsive/mobile layout
-- [ ] API response (e.g. /api/staff)
-- [ ] Database structure (schema/records)
-- [ ] Final application
+- [x] Main directory (home view) — `screenshots/01-main-directory.png`
+- [x] Search results — `screenshots/02-search-results.png`
+- [x] Department filtering — `screenshots/03-department-filter.png`
+- [x] Role filtering — `screenshots/04-role-filter.png`
+- [x] Combined filters — `screenshots/05-combined-filters.png`
+- [x] Staff profile (modal) — `screenshots/06-staff-profile-modal.png`
+- [x] Empty state — `screenshots/07-empty-state.png`
+- [ ] Responsive/mobile layout — no standalone screenshot was retained. Responsive behaviour was
+      verified during final QA at 375px, 768px and 1440px (single-column grid with mobile header,
+      two-column grid, and three-column grid with sidebar respectively, with no horizontal overflow);
+      the result is recorded in the testing plan rather than as a separate image file.
+- [x] API response (e.g. /api/staff) — `screenshots/09-api-response.png`
+- [x] Database structure (schema/records) — `screenshots/10-database-structure.png`
+- [x] Final application — `screenshots/11-final-application.png`
+
+Supporting diagrams, completed and stored alongside the screenshots:
+
+- [x] Entity-relationship diagram — `screenshots/12-er-diagram.png`
+- [x] System architecture diagram — `screenshots/13-system-architecture.png`
 
 ## 15. Expected Project Outcome
 
@@ -243,19 +258,22 @@ Recommended structure for the final SIWES report:
 
 ## 19. Final SIWES Completion Checklist
 
-- [ ] Application completed
-- [ ] Database working
-- [ ] API working
-- [ ] Frontend working
-- [ ] Search working
-- [ ] Filters working
-- [ ] Profile modal working
-- [ ] Responsive design working
-- [ ] Testing completed
-- [ ] Screenshots collected
-- [ ] ER diagram completed
-- [ ] Architecture diagram completed
-- [ ] README completed
-- [ ] SIWES report completed
-- [ ] Presentation prepared
-- [ ] Project successfully demonstrated
+- [x] Application completed
+- [x] Database working
+- [x] API working
+- [x] Frontend working
+- [x] Search working
+- [x] Filters working
+- [x] Profile modal working
+- [x] Responsive design working
+- [x] Testing completed
+- [x] Screenshots collected (all planned captures exist except the standalone responsive-layout
+      screenshot, which is documented as not retained in section 14)
+- [x] ER diagram completed
+- [x] Architecture diagram completed
+- [x] README completed
+- [x] SIWES report completed
+- [ ] Presentation prepared — not yet started; no slide deck or presentation file exists yet
+- [x] Project successfully demonstrated (running system verified end to end against the API and the
+      frontend, with evidence in `screenshots/09-api-response.png`,
+      `screenshots/10-database-structure.png` and `screenshots/11-final-application.png`)

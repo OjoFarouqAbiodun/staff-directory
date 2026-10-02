@@ -5,7 +5,6 @@ const rootDir = path.resolve(__dirname, '..', '..');
 module.exports = {
   port: Number(process.env.PORT) || 3000,
 
-  // Local single-file SQLite database stored in data/
   dbFile: process.env.DB_FILE
     ? path.resolve(process.env.DB_FILE)
     : path.join(rootDir, 'data', 'staff-directory.db'),
