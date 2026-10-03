@@ -249,6 +249,22 @@ The server listens on port 3000 by default. To use a different port, set the `PO
 environment variable, for example `PORT=4000 npm start` (PowerShell:
 `$env:PORT=4000; npm start`).
 
+### Deploying to a hosting platform
+
+The application runs as a **single Node.js/Express service** and can be deployed to a Node.js host
+such as Render. It binds to the `PORT` environment variable on `0.0.0.0`, as hosting platforms
+require.
+
+**The database is initialised automatically at startup.** On start the server creates the SQLite
+database if the file is missing, applies `src/database/schema.sql`, and seeds the sample data, so a
+fresh deployment needs no manual database setup step. Seeding is idempotent, so this is safe on
+every restart and never duplicates rows.
+
+The optional `DB_FILE` environment variable overrides the database location and allows the database
+file to be placed on a persistent disk. Without a persistent disk, the database is created inside
+the service's own filesystem and is therefore re-initialised from scratch on every restart or
+redeploy. The application is read-only, so no data is lost when this happens.
+
 ---
 
 ## 9. Using the Application
@@ -444,8 +460,8 @@ The following practices are actually implemented in this project:
   frontend calls only same-origin relative paths.
 - **Fictional sample data.** No real personal information is stored or displayed.
 
-This is a student demonstration project on a local database with no authentication or access
-control, so it is not hardened for public deployment.
+This is an educational student demonstration application. It does not include authentication,
+rate limiting or a Content Security Policy, so it is not hardened for public deployment.
 
 ---
 
@@ -515,9 +531,9 @@ It is safe to run as many times as needed — existing rows are not duplicated. 
 
 ### A page looks empty or shows a loading message that never finishes
 
-That normally means the server is not running or the database has not been created. Check the
-terminal running the server for errors, confirm the server was started, and re-run
-`npm run db:init`.
+That normally means the server is not running. Check the terminal running the server for errors and
+confirm the server was started. The database is created and seeded automatically at startup, so
+restarting the server normally restores it; `npm run db:init` can also be run manually.
 
 ---
 
@@ -546,19 +562,19 @@ demonstrates practical work across the following areas:
 
 The project is a demonstration, and its current limitations are intentional:
 
-- **Local SQLite database** — a single local file, not designed for multi-user or production
+- **Single-file SQLite database** — one local file, not designed for multi-user or production
   scale.
 - **Fictional sample data only** — 18 invented staff records; there is no real staff data.
 - **No authentication or access control** — the directory is open to anyone who can reach the
   server.
 - **No administrative interface** — there is no create, edit or delete functionality. The API and
   interface are read-only.
-- **No production deployment** — the application is intended to be run locally; there is no
-  hosting, deployment or production configuration.
+- **Database reset on restart** — where no persistent disk is configured, the SQLite database is
+  re-created and re-seeded on every service restart or redeploy.
 
 Possible future directions (not implemented) would include authentication, an administrative
-staff-management interface, role-based permissions, a hosted database, deployment to a hosting
-platform, and audit logs.
+staff-management interface, role-based permissions, a hosted database, persistent storage, and audit
+logs.
 
 ---
 
