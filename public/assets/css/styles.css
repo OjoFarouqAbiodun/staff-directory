@@ -10,6 +10,13 @@ select:focus-visible {
   outline-offset: 2px;
 }
 
+/* The skip link target is programmatically focusable; the inset outline keeps
+   the focus state visible without ever widening the layout. */
+#main-content:focus {
+  outline: 2px solid #0f766e;
+  outline-offset: -4px;
+}
+
 input[type="search"]::-webkit-search-decoration,
 input[type="search"]::-webkit-search-cancel-button {
   -webkit-appearance: none;
@@ -49,6 +56,34 @@ input[type="search"]::-webkit-search-cancel-button {
 }
 
 #profile-modal.is-open .modal-panel {
+  transform: translateY(0) scale(1);
+}
+
+/* The task management dialogs use the same presentation as the profile modal. */
+#task-modal:not(.hidden),
+#task-delete-modal:not(.hidden) {
+  display: flex;
+}
+
+#task-modal,
+#task-delete-modal {
+  opacity: 0;
+  transition: opacity var(--transition-base) ease;
+}
+
+#task-modal.is-open,
+#task-delete-modal.is-open {
+  opacity: 1;
+}
+
+#task-modal .modal-panel,
+#task-delete-modal .modal-panel {
+  transform: translateY(8px) scale(0.99);
+  transition: transform var(--transition-base) ease;
+}
+
+#task-modal.is-open .modal-panel,
+#task-delete-modal.is-open .modal-panel {
   transform: translateY(0) scale(1);
 }
 

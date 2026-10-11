@@ -10,6 +10,60 @@ I am a beginner with limited programming knowledge, so **do not assume I underst
 
 ---
 
+# 0. EXPANDED SCOPE — OWNER-APPROVED REVISIONS
+
+> **Status of this section.** This specification originally described a read-only Staff
+> Directory with three database tables and seven public `GET` endpoints. After the original
+> directory, search, filtering, profile modal and responsive interface were completed and
+> verified, the owner **explicitly approved** an expanded scope. The following capabilities were
+> requested, implemented and verified as Tasks 1–6. **Where a later section of this document
+> still describes the original read-only design — for example "no authentication", "read-only
+> API", "exactly three tables", or login/registration/dashboards listed as forbidden — that
+> statement is superseded here and marked `REVISED` in place.** The original Staff Directory
+> requirements remain in force and are unchanged.
+
+**Task 1 — Administrator authentication backend.** A `POST /api/auth/register` endpoint creates
+an administrator account (username, email, `crypto.scrypt` password hash with a unique salt —
+never plaintext), and `POST /api/auth/login`, `POST /api/auth/logout` and `GET /api/auth/me`
+manage server-side sessions stored in an `admin_sessions` table and carried in an `HttpOnly`,
+`SameSite=Lax`, 7-day `admin_session` cookie (`Secure` in production). Registration creates an
+administrator account; **no default administrator credentials are provided.** The auth routes
+are mounted separately under `/api/auth`; no existing directory endpoint changed.
+
+**Task 2 — Authentication interface.** Sign In / Sign Up screens in the existing SPA, session
+detection on page load via `GET /api/auth/me`, an account view, sign-out, auth-aware navigation,
+loading/error/session-expiry states, and responsive behaviour at 375px / 768px / 1440px.
+
+**Task 3 — Admin-only staff creation.** A protected `POST /api/staff` endpoint (requires a valid
+`admin_session` cookie; otherwise HTTP 401) and an Add Staff screen that publishes the new
+record in the directory immediately. Visitors without a session never see or reach the form.
+
+**Task 4 — Task management backend.** A `tasks` table plus seven protected endpoints to create,
+list (with validated `staff_id` / `status` / `priority` filters), view, update, reassign, change
+the status of, and delete tasks assigned to staff. `created_by_admin_id` is taken from the
+session, never from the request body. `GET /api/staff/:id/tasks` lists one staff member's tasks;
+`GET /api/staff/:id` itself remains public.
+
+**Task 5 — Task management interface.** A signed-in-only Tasks screen: create and edit tasks,
+assign staff, change status from the list, delete after a confirmation naming the task, and
+filter/clear filters. Visitors are routed away from it.
+
+**Task 6 — Administrator dashboard.** A protected `GET /api/admin/dashboard` endpoint plus a
+Dashboard screen. Every number is recomputed from the database at request time (aggregate SQL,
+no N+1): staff total and employment-status counts; task total, per-status counts and overdue
+count (due date before SQLite UTC `date('now')`, excluding Completed/Cancelled); up to ten
+overdue tasks (oldest first), the five staff members with the most open tasks and the five most
+recently updated tasks. The response carries no passwords, hashes or session material. Zero-data
+databases return all-zero counts. Summary cards and rows link into the Directory/Tasks views with
+their filters pre-applied.
+
+**Resulting endpoint inventory (20 total).** Seven public directory endpoints (health, staff,
+staff by id, departments, departments by id, roles, roles by id), four authentication endpoints,
+one protected staff-creation endpoint, seven protected task endpoints and one protected dashboard
+endpoint. The public endpoints are unchanged in method, path and response shape.
+
+---
+
 # 1. PROJECT OBJECTIVE
 
 Build a polished, modern **Staff Directory Web Application** for an organization.
@@ -86,8 +140,12 @@ Do NOT introduce:
 * Supabase
 * Redux
 * Axios
-* Authentication systems
-* Admin dashboards
+* ~~Authentication systems~~ — **`REVISED`**: the owner approved administrator authentication
+  using Node's built-in `crypto` for password hashing and an internal `admin_sessions` table; no
+  third-party authentication library was added.
+* ~~Admin dashboards~~ — **`REVISED`**: the owner approved a read-only administrator dashboard
+  (Task 6) that summarises the live database; no third-party dashboard or charting library was
+  added.
 * Unnecessary third-party UI libraries
 
 Do not add technologies simply because they are popular.
@@ -118,22 +176,27 @@ Do NOT add extra functionality until the following are completely working:
 
 Do NOT spend time building:
 
-* Login
-* Registration
-* Admin panel
-* Staff creation/editing UI
-* Staff deletion UI
-* Authentication
-* Authorization
-* Pagination
-* Deployment configuration
-* Complex analytics
-* Notifications
-* Dark mode
-* Unnecessary animations
-* Unnecessary features
+* ~~Login~~ — **`REVISED`**: approved as Task 2 (Sign In screen wired to `POST /api/auth/login`).
+* ~~Registration~~ — **`REVISED`**: approved as Tasks 1–2 (administrator sign-up).
+* ~~Admin panel~~ — **`REVISED`**: approved as Tasks 2, 3, 5 and 6 (account view, Add Staff,
+  Tasks and Dashboard screens, all administrator-only).
+* ~~Staff creation/editing UI~~ — **`REVISED`**: staff creation UI approved as Task 3. Staff
+  **editing and deletion** remain out of scope and are not implemented.
+* Staff deletion UI — still out of scope; not implemented.
+* ~~Authentication~~ — **`REVISED`**: approved as Task 1 (backend) and Task 2 (interface).
+* ~~Authorization~~ — **`REVISED`**: approved for the actions that change data (staff creation,
+  all task endpoints, the dashboard) via the `authenticate` middleware; the directory's read
+  endpoints deliberately stay public.
+* Pagination — still out of scope.
+* Deployment configuration — still out of scope beyond the existing Render-ready setup.
+* Complex analytics — still out of scope; the dashboard is a simple read-only summary.
+* Notifications — still out of scope.
+* Dark mode — still out of scope.
+* Unnecessary animations — still out of scope.
+* Unnecessary features — still out of scope.
 
-unless I explicitly request them later.
+unless I explicitly request them later. Items above marked **`REVISED`** were explicitly
+requested later and are now implemented.
 
 ---
 
@@ -222,7 +285,11 @@ staff-directory/
 │   │   │   ├── api.js
 │   │   │   ├── ui.js
 │   │   │   ├── filters.js
-│   │   │   └── modal.js
+│   │   │   ├── modal.js
+│   │   │   ├── auth.js          (REVISED — Task 1–2: sign-in/sign-up/session router)
+│   │   │   ├── staff-create.js  (REVISED — Task 3: Add Staff screen)
+│   │   │   ├── tasks.js         (REVISED — Task 5: Tasks screen)
+│   │   │   └── dashboard.js     (REVISED — Task 6: Dashboard screen)
 │   │   ├── images/
 │   │   │   └── placeholders/
 │   │   └── favicon.svg
@@ -237,18 +304,30 @@ staff-directory/
 │   ├── controllers/
 │   │   ├── staffController.js
 │   │   ├── departmentController.js
-│   │   └── roleController.js
+│   │   ├── roleController.js
+│   │   ├── authController.js    (REVISED — Task 1)
+│   │   ├── taskController.js    (REVISED — Task 4)
+│   │   └── dashboardController.js (REVISED — Task 6)
 │   ├── routes/
 │   │   ├── staffRoutes.js
 │   │   ├── departmentRoutes.js
-│   │   └── roleRoutes.js
+│   │   ├── roleRoutes.js
+│   │   ├── authRoutes.js        (REVISED — Task 1)
+│   │   ├── taskRoutes.js        (REVISED — Task 4)
+│   │   └── dashboardRoutes.js   (REVISED — Task 6)
 │   ├── repositories/
 │   │   ├── staffRepository.js
 │   │   ├── departmentRepository.js
-│   │   └── roleRepository.js
+│   │   ├── roleRepository.js
+│   │   ├── adminRepository.js   (REVISED — Task 1)
+│   │   ├── sessionRepository.js (REVISED — Task 1)
+│   │   ├── taskRepository.js    (REVISED — Task 4)
+│   │   └── dashboardRepository.js (REVISED — Task 6)
 │   ├── middleware/
 │   │   ├── errorHandler.js
-│   │   └── notFound.js
+│   │   ├── notFound.js
+│   │   ├── parseCookies.js      (REVISED — Task 1)
+│   │   └── authenticate.js      (REVISED — Task 1: session check for protected routes)
 │   └── app.js
 │
 ├── server.js
@@ -337,6 +416,48 @@ Create indexes for commonly filtered/searched fields such as:
 * employment_status
 * last_name
 
+## admins  (REVISED — Task 1)
+
+```text
+id
+username        (TEXT NOT NULL UNIQUE)
+email           (TEXT NOT NULL UNIQUE, stored lowercase)
+password_hash   (TEXT NOT NULL — crypto.scrypt with a unique salt; never plaintext)
+full_name       (TEXT NOT NULL)
+created_at
+updated_at
+```
+
+## admin_sessions  (REVISED — Task 1)
+
+```text
+id          (TEXT PRIMARY KEY — a random 256-bit opaque session token, not a sequential id)
+admin_id    (INTEGER NOT NULL, FOREIGN KEY → admins.id)
+expires_at  (TEXT NOT NULL — 7 days after creation; expired sessions are rejected with 401)
+created_at
+```
+
+## tasks  (REVISED — Task 4)
+
+```text
+id                  (INTEGER PRIMARY KEY AUTOINCREMENT)
+title               (TEXT NOT NULL, max 200 characters)
+description         (TEXT, nullable, max 2000 characters)
+staff_id            (INTEGER NOT NULL, FOREIGN KEY → staff.id)
+priority            (TEXT NOT NULL DEFAULT 'Medium', CHECK in Low/Medium/High/Urgent)
+status              (TEXT NOT NULL DEFAULT 'Pending', CHECK in Pending/In Progress/Completed/On Hold/Cancelled)
+due_date            (TEXT, nullable — ISO YYYY-MM-DD, must be a real calendar date)
+created_by_admin_id (INTEGER NOT NULL, FOREIGN KEY → admins.id; set from the authenticated session)
+created_at
+updated_at
+```
+
+The final schema contains **six tables**: `departments`, `roles`, `staff`, `admins`,
+`admin_sessions` and `tasks`. The database also declares indexes on `admin_sessions(admin_id,
+expires_at)` and on `tasks(staff_id, status, created_by_admin_id, due_date)` in addition to the
+four staff indexes. No administrator is seeded — the first account is created through
+`POST /api/auth/register`.
+
 ---
 
 # 9. SEED DATA
@@ -406,6 +527,63 @@ GET /api/roles/:id
 ```http
 GET /api/health
 ```
+
+### Administrator authentication  (REVISED — Task 1; mounted under `/api/auth`)
+
+```http
+POST /api/auth/register
+POST /api/auth/login
+POST /api/auth/logout
+GET  /api/auth/me
+```
+
+Registration creates an administrator account and starts a session. Login validates
+`email` + `password` and returns the same generic 401 (`Invalid email or password`) whether the
+account exists or the password is wrong, so responses never reveal account existence. All
+responses expose only `{ id, username, email, full_name }` for the administrator — never the
+password hash or session token.
+
+### Staff creation  (REVISED — Task 3; protected)
+
+```http
+POST /api/staff
+```
+
+Requires a valid `admin_session` cookie; answers HTTP 401 without one. Returns 201 with the
+created record (same shape as `GET /api/staff/:id`), 400 for invalid input, 409 for a duplicate
+email.
+
+### Task management  (REVISED — Task 4; all protected)
+
+```http
+GET    /api/tasks
+GET    /api/tasks/:id
+POST   /api/tasks
+PATCH  /api/tasks/:id/status
+PUT    /api/tasks/:id
+DELETE /api/tasks/:id
+GET    /api/staff/:id/tasks
+```
+
+All require a valid `admin_session` cookie and answer HTTP 401 without one. `GET /api/tasks`
+accepts validated `staff_id`, `status` and `priority` filters. `created_by_admin_id` always comes
+from the session.
+
+### Administrator dashboard  (REVISED — Task 6; protected)
+
+```http
+GET /api/admin/dashboard
+```
+
+Requires a valid `admin_session` cookie. Recomputes staff/task totals, status breakdowns, overdue
+count and the overdue/recent/top-staff lists from the live database at request time. Carries no
+credentials, hashes or tokens.
+
+### Authorization summary
+
+The seven directory endpoints are public and unchanged. Only `POST /api/staff`, the seven task
+endpoints and `GET /api/admin/dashboard` require an administrator session, enforced by the
+`authenticate` middleware.
 
 ---
 
@@ -551,6 +729,33 @@ Responsible for:
 * Initial data loading
 * Event registration
 * Connecting API/data/UI logic
+
+### auth.js  (REVISED — Task 1–2)
+
+Responsible for:
+
+* Sign In / Sign Up / account view routing and the session state
+* Asking `/api/auth/me` on load and switching the navigation between the account actions
+  and the signed-in identity
+* Honest session-expiry handling (`handleSessionExpired`) shared with staff creation, tasks
+  and the dashboard
+* Stripping `?…` query-fragment intents from the URL after a view loads them
+
+### staff-create.js  (REVISED — Task 3)
+
+Responsible for the Add Staff form: live department/role options, client-side validation,
+saving through the protected `POST /api/staff`, success confirmation, directory refresh.
+
+### tasks.js  (REVISED — Task 5)
+
+Responsible for the Tasks screen: list rendering, staff/status/priority filters, the create
+and edit dialog, per-card status updates, delete confirmation, and filter-intent arrival.
+
+### dashboard.js  (REVISED — Task 6)
+
+Responsible for the Dashboard screen: loading, content, error-with-retry and session-expiry
+states, `aria-live` announcements, and links that carry complete Directory/Tasks filter
+intents.
 
 ---
 
@@ -763,10 +968,15 @@ Use scripts similar to:
 {
   "scripts": {
     "start": "node server.js",
-    "dev": "nodemon server.js"
+    "dev": "nodemon server.js",
+    "db:init": "node src/database/seed.js",
+    "db:seed": "node src/database/seed.js"
   }
 }
 ```
+
+`db:init` / `db:seed` create the schema (including the `admins`, `admin_sessions` and `tasks`
+tables added by the expanded scope) and the sample data; the seed is idempotent.
 
 Use only necessary dependencies.
 

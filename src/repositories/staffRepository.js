@@ -141,6 +141,70 @@ function findById(id) {
   return mapRow(row);
 }
 
+const INSERT_STAFF = `
+  INSERT INTO staff (
+    first_name,
+    last_name,
+    email,
+    phone,
+    job_title,
+    department_id,
+    role_id,
+    location,
+    avatar_url,
+    bio,
+    employment_status
+  )
+  VALUES (
+    @first_name,
+    @last_name,
+    @email,
+    @phone,
+    @job_title,
+    @department_id,
+    @role_id,
+    @location,
+    @avatar_url,
+    @bio,
+    @employment_status
+  )
+`;
+
+/*
+ * The schema's UNIQUE constraint on staff.email is case-sensitive, but the
+ * directory treats an address as the person's identity. Comparing without
+ * regard to case keeps two look-alike addresses from becoming two people.
+ */
+function emailExists(email) {
+  const db = getDatabase();
+
+  const row = db.prepare('SELECT id FROM staff WHERE email = @email COLLATE NOCASE').get({
+    email: String(email)
+  });
+
+  return Boolean(row);
+}
+
+function create(input) {
+  const db = getDatabase();
+
+  const info = db.prepare(INSERT_STAFF).run({
+    first_name: input.firstName,
+    last_name: input.lastName,
+    email: input.email,
+    phone: input.phone,
+    job_title: input.jobTitle,
+    department_id: input.departmentId,
+    role_id: input.roleId,
+    location: input.location,
+    avatar_url: input.avatarUrl,
+    bio: input.bio,
+    employment_status: input.employmentStatus
+  });
+
+  return Number(info.lastInsertRowid);
+}
+
 function countAll(filters) {
   const db = getDatabase();
   const { where, params } = buildWhereClause(filters || {});
@@ -160,5 +224,7 @@ function countAll(filters) {
 module.exports = {
   findAll,
   findById,
-  countAll
+  countAll,
+  emailExists,
+  create
 };

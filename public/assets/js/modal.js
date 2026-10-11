@@ -245,6 +245,24 @@
   }
 
   async function openProfile(staffId) {
+    const rawId = typeof staffId === 'string' ? staffId : String(staffId);
+
+    /*
+     * The caller normally focuses the control that opens the profile (a card
+     * or a staff link inside the tasks view), so the click target is used to
+     * restore focus when the modal closes.
+     */
+    const activeElement = document.activeElement;
+
+    if (activeElement && activeElement !== document.body && typeof activeElement.focus === 'function') {
+      triggerElement = activeElement;
+    }
+
+    if (!isRequestableStaffId(rawId)) {
+      console.error('Staff Directory could not open a profile: the staff id is not usable.');
+      return;
+    }
+
     const token = ++requestToken;
 
     try {
@@ -389,6 +407,7 @@
   }
 
   window.StaffDirectoryModal = {
-    init
+    init,
+    openProfile
   };
 })();

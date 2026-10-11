@@ -96,5 +96,10 @@ document.addEventListener('DOMContentLoaded', function () {
     retryButton.addEventListener('click', handleRetry);
   }
 
+  initialiseModule('StaffDirectoryAuth');
+  initialiseModule('StaffDirectoryStaffCreate');
+  initialiseModule('StaffDirectoryTasks');
+  initialiseModule('StaffDirectoryDashboard');
+
   loadDirectory();
 });

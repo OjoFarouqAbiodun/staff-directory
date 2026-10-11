@@ -15,6 +15,10 @@
     <script src="/assets/js/ui.js"></script>
     <script src="/assets/js/filters.js"></script>
     <script src="/assets/js/modal.js"></script>
+    <script src="/assets/js/auth.js"></script>
+    <script src="/assets/js/staff-create.js"></script>
+    <script src="/assets/js/tasks.js"></script>
+    <script src="/assets/js/dashboard.js"></script>
     <script src="/assets/js/app.js"></script>
   </head>
 
@@ -49,9 +53,10 @@
             Browse
           </p>
           <a
-            href="#"
-            aria-current="page"
-            class="flex items-center gap-3 rounded-md bg-stone-100 px-3 py-2 text-sm font-medium text-stone-900 transition-colors duration-200"
+            href="#directory"
+            data-view="directory"
+            data-current
+            class="flex min-h-[48px] items-center gap-3 rounded-md bg-stone-100 px-3 py-2 text-sm font-medium text-stone-900 transition-colors duration-200"
           >
             <svg
               class="h-4 w-4 text-teal-700"
@@ -84,6 +89,81 @@
           </a>
         </nav>
 
+        <nav class="border-t border-stone-200 px-3 py-3" aria-label="Account">
+          <p class="px-3 pb-2 text-xs font-medium uppercase tracking-wide text-stone-400">
+            Account
+          </p>
+
+          <p
+            id="auth-nav-checking"
+            class="flex min-h-[48px] items-center px-3 text-xs text-stone-400"
+          >
+            Checking session&hellip;
+          </p>
+
+          <div id="auth-nav-signed-out" class="hidden">
+            <a
+              href="#signin"
+              data-view="signin"
+              class="mt-1 flex min-h-[48px] items-center rounded-md px-3 py-2 text-sm font-medium text-stone-600 transition-colors duration-200 hover:bg-stone-50 hover:text-stone-900"
+            >
+              Sign in
+            </a>
+            <a
+              href="#signup"
+              data-view="signup"
+              class="mt-1 flex min-h-[48px] items-center rounded-md px-3 py-2 text-sm font-medium text-stone-600 transition-colors duration-200 hover:bg-stone-50 hover:text-stone-900"
+            >
+              Create account
+            </a>
+          </div>
+
+          <div id="auth-nav-signed-in" class="hidden">
+            <div class="mt-1 rounded-md bg-stone-50 px-3 py-3">
+              <p id="auth-nav-name" class="truncate text-sm font-semibold text-stone-900"></p>
+              <p id="auth-nav-email" class="mt-0.5 truncate text-xs text-stone-500"></p>
+            </div>
+            <a
+              href="#dashboard"
+              data-view="dashboard"
+              data-admin-only
+              class="mt-1 flex min-h-[48px] items-center rounded-md px-3 py-2 text-sm font-medium text-stone-600 transition-colors duration-200 hover:bg-stone-50 hover:text-stone-900"
+            >
+              Dashboard
+            </a>
+            <a
+              href="#add-staff"
+              data-view="add-staff"
+              data-admin-only
+              class="mt-1 flex min-h-[48px] items-center rounded-md px-3 py-2 text-sm font-medium text-stone-600 transition-colors duration-200 hover:bg-stone-50 hover:text-stone-900"
+            >
+              Add staff
+            </a>
+            <a
+              href="#tasks"
+              data-view="tasks"
+              data-admin-only
+              class="mt-1 flex min-h-[48px] items-center rounded-md px-3 py-2 text-sm font-medium text-stone-600 transition-colors duration-200 hover:bg-stone-50 hover:text-stone-900"
+            >
+              Tasks
+            </a>
+            <a
+              href="#account"
+              data-view="account"
+              class="mt-1 flex min-h-[48px] items-center rounded-md px-3 py-2 text-sm font-medium text-stone-600 transition-colors duration-200 hover:bg-stone-50 hover:text-stone-900"
+            >
+              Your account
+            </a>
+            <button
+              data-sign-out
+              type="button"
+              class="mt-1 flex min-h-[48px] w-full items-center rounded-md px-3 py-2 text-left text-sm font-medium text-stone-600 transition-colors duration-200 hover:bg-stone-50 hover:text-stone-900 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              <span>Sign out</span>
+            </button>
+          </div>
+        </nav>
+
         <div class="border-t border-stone-200 px-6 py-4">
           <p class="text-xs text-stone-500">Rids Cloud Digital Solution</p>
           <p class="mt-0.5 text-xs text-stone-400">People &amp; Operations</p>
@@ -99,22 +179,124 @@
             aria-hidden="true"
             >SD</span
           >
-          <p class="truncate text-sm font-semibold text-stone-900">Staff Directory</p>
+          <p class="min-w-0 flex-1 truncate text-sm font-semibold text-stone-900">
+            Staff Directory
+          </p>
+
+          <div class="flex shrink-0 items-center gap-2">
+            <p
+              id="auth-header-checking"
+              class="flex min-h-[48px] items-center whitespace-nowrap px-2 text-xs text-stone-400"
+            >
+              Checking&hellip;
+            </p>
+
+            <div id="auth-header-signed-out" class="hidden shrink-0 items-center gap-2">
+              <a
+                href="#signin"
+                data-view="signin"
+                class="flex min-h-[48px] items-center rounded-md px-3 text-sm font-medium text-teal-700 transition-colors duration-200 hover:text-teal-800"
+              >
+                Sign in
+              </a>
+              <a
+                href="#signup"
+                data-view="signup"
+                class="flex min-h-[48px] items-center rounded-md border border-stone-200 bg-white px-3 text-sm font-medium text-stone-700 shadow-sm transition-colors duration-200 hover:bg-stone-50"
+              >
+                Sign up
+              </a>
+            </div>
+
+            <div id="auth-header-signed-in" class="hidden shrink-0 items-center gap-2">
+              <a
+                href="#account"
+                data-view="account"
+                id="auth-header-name"
+                title="Your account"
+                class="flex min-h-[48px] max-w-[7.5rem] items-center truncate rounded-md px-2 text-sm font-medium text-stone-700 transition-colors duration-200 hover:text-stone-900"
+                ><span id="auth-header-name-text"></span
+                ><span class="sr-only"> &mdash; open your account</span></a
+              >
+              <button
+                data-sign-out
+                type="button"
+                class="flex min-h-[48px] shrink-0 items-center rounded-md border border-stone-200 bg-white px-3 text-sm font-medium text-stone-700 shadow-sm transition-colors duration-200 hover:bg-stone-50 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                <span>Sign out</span>
+              </button>
+            </div>
+          </div>
         </header>
 
-        <main id="main-content" class="flex-1 px-4 py-8 sm:px-6 lg:px-10 lg:py-10">
+        <main id="main-content" tabindex="-1" class="flex-1 px-4 py-8 sm:px-6 lg:px-10 lg:py-10">
           <div class="mx-auto w-full max-w-6xl">
+
+            <div
+              id="auth-status"
+              class="mb-6 hidden rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800"
+              role="status"
+              aria-live="polite"
+            ></div>
+
+            <section id="view-directory" aria-labelledby="directory-title">
+
+            <div
+              id="staff-create-status"
+              class="mt-6 hidden rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800"
+              role="status"
+              aria-live="polite"
+            >
+              <div class="flex flex-wrap items-center justify-between gap-3">
+                <p id="staff-create-status-message" class="min-w-0"></p>
+                <button
+                  id="staff-create-status-dismiss"
+                  type="button"
+                  class="min-h-[40px] shrink-0 rounded-md px-2 py-1 text-sm font-medium text-emerald-800 underline-offset-2 hover:underline"
+                >
+                  Dismiss
+                </button>
+              </div>
+            </div>
 
             <div class="flex flex-wrap items-end justify-between gap-4">
               <div>
-                <h1 class="text-2xl font-semibold tracking-tight text-stone-900 sm:text-3xl">
+                <h1
+                  id="directory-title"
+                  tabindex="-1"
+                  class="text-2xl font-semibold tracking-tight text-stone-900 sm:text-3xl"
+                >
                   Staff Directory
                 </h1>
                 <p class="mt-1.5 text-sm text-stone-500">
                   Find and connect with people across the organization.
                 </p>
               </div>
-              <p class="text-sm text-stone-400" aria-hidden="true">Updated today</p>
+              <div class="flex flex-wrap items-center gap-4">
+                <p class="text-sm text-stone-400" aria-hidden="true">Updated today</p>
+                <div data-admin-only class="hidden">
+                  <div class="flex flex-wrap items-center gap-3">
+                    <a
+                      href="#dashboard"
+                      class="flex min-h-[48px] items-center rounded-lg border border-stone-200 bg-white px-4 py-3 text-sm font-medium text-stone-700 shadow-sm transition-colors duration-200 hover:bg-stone-50"
+                    >
+                      Dashboard
+                    </a>
+                    <a
+                      href="#add-staff"
+                      class="flex min-h-[48px] items-center rounded-lg bg-teal-700 px-4 py-3 text-sm font-semibold text-white transition-colors duration-200 hover:bg-teal-800"
+                    >
+                      Add staff
+                    </a>
+                    <a
+                      href="#tasks"
+                      class="flex min-h-[48px] items-center rounded-lg border border-stone-200 bg-white px-4 py-3 text-sm font-medium text-stone-700 shadow-sm transition-colors duration-200 hover:bg-stone-50"
+                    >
+                      Tasks
+                    </a>
+                  </div>
+                </div>
+              </div>
             </div>
 
             <div class="mt-8">
@@ -423,6 +605,960 @@
                 </button>
               </li>
             </ul>
+            </section>
+
+            <section id="view-signin" class="hidden" aria-labelledby="signin-title">
+              <div class="flex flex-wrap items-center justify-center gap-4 text-center">
+                <div>
+                  <h1
+                    id="signin-title"
+                    tabindex="-1"
+                    class="text-2xl font-semibold tracking-tight text-stone-900 sm:text-3xl"
+                  >
+                    Sign in
+                  </h1>
+                  <p class="mt-1.5 text-sm text-stone-500">
+                    Administrator access to the Staff Directory.
+                  </p>
+                </div>
+                <p class="text-sm text-stone-400">No account needed to browse</p>
+              </div>
+
+              <div class="mt-8 mx-auto w-full max-w-lg rounded-lg border border-stone-200 bg-white p-6 shadow-sm">
+                <form id="signin-form" novalidate>
+                  <div
+                    id="signin-form-error"
+                    class="hidden rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800"
+                    role="alert"
+                  ></div>
+
+                  <div class="mt-4">
+                    <label for="signin-email" class="block text-sm font-medium text-stone-700">
+                      Email address
+                    </label>
+                    <input
+                      id="signin-email"
+                      name="email"
+                      type="email"
+                      autocomplete="email"
+                      inputmode="email"
+                      required
+                      class="mt-1.5 min-h-[48px] w-full rounded-lg border border-stone-200 bg-white px-4 py-3 text-sm text-stone-900 shadow-sm transition-all duration-200 focus:border-teal-600 focus:outline-none focus:ring-2 focus:ring-teal-600/20"
+                    />
+                    <p id="signin-email-error" class="mt-1.5 hidden text-sm text-red-600"></p>
+                  </div>
+
+                  <div class="mt-4">
+                    <label for="signin-password" class="block text-sm font-medium text-stone-700">
+                      Password
+                    </label>
+                    <input
+                      id="signin-password"
+                      name="password"
+                      type="password"
+                      autocomplete="current-password"
+                      required
+                      class="mt-1.5 min-h-[48px] w-full rounded-lg border border-stone-200 bg-white px-4 py-3 text-sm text-stone-900 shadow-sm transition-all duration-200 focus:border-teal-600 focus:outline-none focus:ring-2 focus:ring-teal-600/20"
+                    />
+                    <p id="signin-password-error" class="mt-1.5 hidden text-sm text-red-600"></p>
+                  </div>
+
+                  <button
+                    id="signin-submit"
+                    type="submit"
+                    class="mt-6 flex min-h-[48px] w-full items-center justify-center rounded-lg bg-teal-700 px-4 py-3 text-sm font-semibold text-white transition-colors duration-200 hover:bg-teal-800 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    <span>Sign in</span>
+                  </button>
+                </form>
+              </div>
+
+              <p class="mt-4 mx-auto w-full max-w-lg text-sm text-stone-600">
+                No account yet?
+                <a
+                  href="#signup"
+                  class="font-medium text-teal-700 underline-offset-2 hover:underline"
+                  >Create an account</a
+                >
+              </p>
+            </section>
+
+            <section id="view-signup" class="hidden" aria-labelledby="signup-title">
+              <div class="flex flex-wrap items-center justify-center gap-4 text-center">
+                <div>
+                  <h1
+                    id="signup-title"
+                    tabindex="-1"
+                    class="text-2xl font-semibold tracking-tight text-stone-900 sm:text-3xl"
+                  >
+                    Create your account
+                  </h1>
+                  <p class="mt-1.5 text-sm text-stone-500">
+                    Register an administrator account for the Staff Directory.
+                  </p>
+                </div>
+                <p class="text-sm text-stone-400">Passwords must be 8 characters or more</p>
+              </div>
+
+              <div class="mt-8 mx-auto w-full max-w-lg rounded-lg border border-stone-200 bg-white p-6 shadow-sm">
+                <form id="signup-form" novalidate>
+                  <div
+                    id="signup-form-error"
+                    class="hidden rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800"
+                    role="alert"
+                  ></div>
+
+                  <div class="mt-4">
+                    <label for="signup-name" class="block text-sm font-medium text-stone-700">
+                      Full name
+                    </label>
+                    <input
+                      id="signup-name"
+                      name="full_name"
+                      type="text"
+                      autocomplete="name"
+                      required
+                      class="mt-1.5 min-h-[48px] w-full rounded-lg border border-stone-200 bg-white px-4 py-3 text-sm text-stone-900 shadow-sm transition-all duration-200 focus:border-teal-600 focus:outline-none focus:ring-2 focus:ring-teal-600/20"
+                    />
+                    <p id="signup-name-error" class="mt-1.5 hidden text-sm text-red-600"></p>
+                  </div>
+
+                  <div class="mt-4">
+                    <label for="signup-username" class="block text-sm font-medium text-stone-700">
+                      Username
+                    </label>
+                    <input
+                      id="signup-username"
+                      name="username"
+                      type="text"
+                      autocomplete="username"
+                      autocapitalize="none"
+                      spellcheck="false"
+                      required
+                      class="mt-1.5 min-h-[48px] w-full rounded-lg border border-stone-200 bg-white px-4 py-3 text-sm text-stone-900 shadow-sm transition-all duration-200 focus:border-teal-600 focus:outline-none focus:ring-2 focus:ring-teal-600/20"
+                    />
+                    <p id="signup-username-error" class="mt-1.5 hidden text-sm text-red-600"></p>
+                  </div>
+
+                  <div class="mt-4">
+                    <label for="signup-email" class="block text-sm font-medium text-stone-700">
+                      Email address
+                    </label>
+                    <input
+                      id="signup-email"
+                      name="email"
+                      type="email"
+                      autocomplete="email"
+                      inputmode="email"
+                      required
+                      class="mt-1.5 min-h-[48px] w-full rounded-lg border border-stone-200 bg-white px-4 py-3 text-sm text-stone-900 shadow-sm transition-all duration-200 focus:border-teal-600 focus:outline-none focus:ring-2 focus:ring-teal-600/20"
+                    />
+                    <p id="signup-email-error" class="mt-1.5 hidden text-sm text-red-600"></p>
+                  </div>
+
+                  <div class="mt-4">
+                    <label for="signup-password" class="block text-sm font-medium text-stone-700">
+                      Password
+                    </label>
+                    <input
+                      id="signup-password"
+                      name="password"
+                      type="password"
+                      autocomplete="new-password"
+                      required
+                      class="mt-1.5 min-h-[48px] w-full rounded-lg border border-stone-200 bg-white px-4 py-3 text-sm text-stone-900 shadow-sm transition-all duration-200 focus:border-teal-600 focus:outline-none focus:ring-2 focus:ring-teal-600/20"
+                    />
+                    <p id="signup-password-error" class="mt-1.5 hidden text-sm text-red-600"></p>
+                  </div>
+
+                  <button
+                    id="signup-submit"
+                    type="submit"
+                    class="mt-6 flex min-h-[48px] w-full items-center justify-center rounded-lg bg-teal-700 px-4 py-3 text-sm font-semibold text-white transition-colors duration-200 hover:bg-teal-800 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    <span>Create account</span>
+                  </button>
+                </form>
+              </div>
+
+              <p class="mt-4 mx-auto w-full max-w-lg text-sm text-stone-600">
+                Already have an account?
+                <a href="#signin" class="font-medium text-teal-700 underline-offset-2 hover:underline"
+                  >Sign in</a
+                >
+              </p>
+            </section>
+
+            <section id="view-account" class="hidden" aria-labelledby="account-title">
+              <div class="flex flex-wrap items-end justify-between gap-4">
+                <div>
+                  <h1
+                    id="account-title"
+                    tabindex="-1"
+                    class="text-2xl font-semibold tracking-tight text-stone-900 sm:text-3xl"
+                  >
+                    Your account
+                  </h1>
+                  <p class="mt-1.5 text-sm text-stone-500">Signed in as an administrator.</p>
+                </div>
+                <p class="text-sm text-stone-400">Administrator</p>
+              </div>
+
+              <div class="mt-8 max-w-lg rounded-lg border border-stone-200 bg-white p-6 shadow-sm">
+                <dl class="grid grid-cols-1 gap-x-6 gap-y-4 sm:grid-cols-2">
+                  <div>
+                    <dt class="text-xs font-medium uppercase tracking-wide text-stone-400">
+                      Full name
+                    </dt>
+                    <dd id="account-name" class="mt-1 text-sm text-stone-900"></dd>
+                  </div>
+                  <div>
+                    <dt class="text-xs font-medium uppercase tracking-wide text-stone-400">
+                      Username
+                    </dt>
+                    <dd id="account-username" class="mt-1 text-sm text-stone-900"></dd>
+                  </div>
+                  <div class="sm:col-span-2">
+                    <dt class="text-xs font-medium uppercase tracking-wide text-stone-400">
+                      Email
+                    </dt>
+                    <dd id="account-email" class="mt-1 text-sm text-stone-900"></dd>
+                  </div>
+                </dl>
+              </div>
+
+              <p class="mt-4 max-w-lg text-sm text-stone-500">
+                The staff directory stays open to everyone, with or without an account. Signed-in
+                administrators can view the dashboard, add new staff members and manage tasks.
+              </p>
+
+              <div class="mt-6 flex flex-wrap gap-3">
+                <div data-admin-only class="hidden">
+                  <a
+                    href="#dashboard"
+                    class="flex min-h-[48px] items-center rounded-lg border border-stone-200 bg-white px-4 py-3 text-sm font-medium text-stone-700 shadow-sm transition-colors duration-200 hover:bg-stone-50"
+                  >
+                    Dashboard
+                  </a>
+                </div>
+                <div data-admin-only class="hidden">
+                  <a
+                    href="#add-staff"
+                    class="flex min-h-[48px] items-center rounded-lg bg-teal-700 px-4 py-3 text-sm font-semibold text-white transition-colors duration-200 hover:bg-teal-800"
+                  >
+                    Add staff
+                  </a>
+                </div>
+                <div data-admin-only class="hidden">
+                  <a
+                    href="#tasks"
+                    class="flex min-h-[48px] items-center rounded-lg border border-stone-200 bg-white px-4 py-3 text-sm font-medium text-stone-700 shadow-sm transition-colors duration-200 hover:bg-stone-50"
+                  >
+                    Tasks
+                  </a>
+                </div>
+                <a
+                  href="#directory"
+                  class="flex min-h-[48px] items-center rounded-lg border border-stone-200 bg-white px-4 py-3 text-sm font-medium text-stone-700 shadow-sm transition-colors duration-200 hover:bg-stone-50"
+                >
+                  Browse the directory
+                </a>
+                <button
+                  data-sign-out
+                  type="button"
+                  class="flex min-h-[48px] items-center rounded-lg border border-stone-200 bg-white px-4 py-3 text-sm font-medium text-stone-700 shadow-sm transition-colors duration-200 hover:bg-stone-50 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  <span>Sign out</span>
+                </button>
+              </div>
+            </section>
+
+            <section id="view-dashboard" class="hidden" aria-labelledby="dashboard-title">
+              <div class="flex flex-wrap items-end justify-between gap-4">
+                <div>
+                  <h1
+                    id="dashboard-title"
+                    tabindex="-1"
+                    class="text-2xl font-semibold tracking-tight text-stone-900 sm:text-3xl"
+                  >
+                    Dashboard
+                  </h1>
+                  <p class="mt-1.5 max-w-xl text-sm text-stone-500">
+                    A quick overview of the staff directory and current task workload.
+                  </p>
+                </div>
+                <p class="text-sm text-stone-400">Administrator</p>
+              </div>
+
+              <p id="dashboard-announce" class="sr-only" aria-live="polite"></p>
+
+              <div
+                id="dashboard-loading"
+                class="mt-8 hidden"
+                aria-live="polite"
+                aria-busy="true"
+              >
+                <p class="text-sm text-stone-500">Loading the dashboard&hellip;</p>
+                <div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                  <div class="h-32 animate-pulse rounded-lg border border-stone-200 bg-stone-100"></div>
+                  <div class="h-32 animate-pulse rounded-lg border border-stone-200 bg-stone-100"></div>
+                  <div class="h-32 animate-pulse rounded-lg border border-stone-200 bg-stone-100"></div>
+                  <div class="h-32 animate-pulse rounded-lg border border-stone-200 bg-stone-100"></div>
+                </div>
+              </div>
+
+              <div
+                id="dashboard-error"
+                class="mt-8 hidden rounded-lg border border-red-200 bg-red-50 px-6 py-8 text-center"
+                role="alert"
+              >
+                <p id="dashboard-error-message" class="text-sm font-medium text-red-900">
+                  Unable to load the dashboard right now.
+                </p>
+                <p id="dashboard-error-detail" class="mt-1 text-sm text-red-700">
+                  Please try again.
+                </p>
+                <button
+                  id="dashboard-retry"
+                  type="button"
+                  class="mt-4 min-h-[48px] rounded-md border border-red-200 bg-white px-3.5 py-2 text-sm font-medium text-red-800 transition-colors duration-200 hover:bg-red-100"
+                >
+                  Try again
+                </button>
+              </div>
+
+              <div id="dashboard-content" class="hidden">
+                <div class="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                  <a
+                    href="#directory"
+                    class="flex min-h-[48px] flex-col rounded-lg border border-stone-200 bg-white p-5 shadow-sm transition-colors duration-200 hover:border-stone-300 hover:shadow-md"
+                  >
+                    <p class="text-sm font-medium text-stone-500">Total staff</p>
+                    <p id="dashboard-staff-total" class="mt-2 text-3xl font-semibold text-stone-900">
+                      &mdash;
+                    </p>
+                    <p class="mt-1 text-xs text-stone-400">Browse the directory</p>
+                  </a>
+                  <a
+                    href="#directory?status=Active"
+                    class="flex min-h-[48px] flex-col rounded-lg border border-stone-200 bg-white p-5 shadow-sm transition-colors duration-200 hover:border-stone-300 hover:shadow-md"
+                  >
+                    <p class="text-sm font-medium text-stone-500">Active staff</p>
+                    <p
+                      id="dashboard-staff-active"
+                      class="mt-2 text-3xl font-semibold text-stone-900"
+                    >
+                      &mdash;
+                    </p>
+                    <p class="mt-1 text-xs text-stone-400">View active staff</p>
+                  </a>
+                  <a
+                    href="#tasks"
+                    class="flex min-h-[48px] flex-col rounded-lg border border-stone-200 bg-white p-5 shadow-sm transition-colors duration-200 hover:border-stone-300 hover:shadow-md"
+                  >
+                    <p class="text-sm font-medium text-stone-500">Total tasks</p>
+                    <p id="dashboard-tasks-total" class="mt-2 text-3xl font-semibold text-stone-900">
+                      &mdash;
+                    </p>
+                    <p class="mt-1 text-xs text-stone-400">Open the tasks view</p>
+                  </a>
+                  <a
+                    href="#tasks"
+                    class="flex min-h-[48px] flex-col rounded-lg border border-stone-200 bg-white p-5 shadow-sm transition-colors duration-200 hover:border-stone-300 hover:shadow-md"
+                  >
+                    <p class="text-sm font-medium text-stone-500">Overdue tasks</p>
+                    <p
+                      id="dashboard-tasks-overdue"
+                      class="mt-2 text-3xl font-semibold text-stone-900"
+                    >
+                      &mdash;
+                    </p>
+                    <p class="mt-1 text-xs text-stone-400">Past due and still open</p>
+                  </a>
+                </div>
+
+                <div class="mt-6 grid grid-cols-1 gap-4 lg:grid-cols-2">
+                  <section
+                    class="rounded-lg border border-stone-200 bg-white p-5 shadow-sm"
+                    aria-labelledby="dashboard-staff-statuses-title"
+                  >
+                    <div class="flex items-start justify-between gap-3">
+                      <h2
+                        id="dashboard-staff-statuses-title"
+                        class="text-sm font-semibold text-stone-900"
+                      >
+                        Staff by employment status
+                      </h2>
+                      <a
+                        href="#directory"
+                        class="inline-flex min-h-[48px] items-center text-sm font-medium text-teal-700 underline-offset-2 hover:underline"
+                      >
+                        Browse directory
+                      </a>
+                    </div>
+                    <ul id="dashboard-staff-statuses" class="mt-4 space-y-1"></ul>
+                  </section>
+
+                  <section
+                    class="rounded-lg border border-stone-200 bg-white p-5 shadow-sm"
+                    aria-labelledby="dashboard-task-statuses-title"
+                  >
+                    <div class="flex items-start justify-between gap-3">
+                      <h2
+                        id="dashboard-task-statuses-title"
+                        class="text-sm font-semibold text-stone-900"
+                      >
+                        Tasks by status
+                      </h2>
+                      <a
+                        href="#tasks"
+                        class="inline-flex min-h-[48px] items-center text-sm font-medium text-teal-700 underline-offset-2 hover:underline"
+                      >
+                        Open tasks
+                      </a>
+                    </div>
+                    <ul id="dashboard-task-statuses" class="mt-4 space-y-1"></ul>
+                  </section>
+                </div>
+
+                <div class="mt-6 grid grid-cols-1 gap-4 lg:grid-cols-2">
+                  <section
+                    class="rounded-lg border border-stone-200 bg-white p-5 shadow-sm"
+                    aria-labelledby="dashboard-overdue-title"
+                  >
+                    <div class="flex items-start justify-between gap-3">
+                      <h2 id="dashboard-overdue-title" class="text-sm font-semibold text-stone-900">
+                        Overdue workload
+                      </h2>
+                      <a
+                        href="#tasks"
+                        class="inline-flex min-h-[48px] items-center text-sm font-medium text-teal-700 underline-offset-2 hover:underline"
+                      >
+                        Open tasks
+                      </a>
+                    </div>
+                    <ul id="dashboard-overdue-list" class="mt-4 divide-y divide-stone-100"></ul>
+                    <p id="dashboard-overdue-empty" class="mt-4 hidden text-sm text-stone-500">
+                      Nothing is overdue.
+                    </p>
+                  </section>
+
+                  <section
+                    class="rounded-lg border border-stone-200 bg-white p-5 shadow-sm"
+                    aria-labelledby="dashboard-top-staff-title"
+                  >
+                    <div class="flex items-start justify-between gap-3">
+                      <h2
+                        id="dashboard-top-staff-title"
+                        class="text-sm font-semibold text-stone-900"
+                      >
+                        Most open tasks by staff member
+                      </h2>
+                      <a
+                        href="#tasks"
+                        class="inline-flex min-h-[48px] items-center text-sm font-medium text-teal-700 underline-offset-2 hover:underline"
+                      >
+                        Open tasks
+                      </a>
+                    </div>
+                    <ul id="dashboard-top-staff-list" class="mt-2"></ul>
+                    <p id="dashboard-top-staff-empty" class="mt-4 hidden text-sm text-stone-500">
+                      No open tasks assigned yet.
+                    </p>
+                  </section>
+                </div>
+
+                <section
+                  class="mt-6 rounded-lg border border-stone-200 bg-white p-5 shadow-sm"
+                  aria-labelledby="dashboard-recent-title"
+                >
+                  <div class="flex items-start justify-between gap-3">
+                    <h2 id="dashboard-recent-title" class="text-sm font-semibold text-stone-900">
+                      Recently updated tasks
+                    </h2>
+                    <a
+                      href="#tasks"
+                      class="inline-flex min-h-[48px] items-center text-sm font-medium text-teal-700 underline-offset-2 hover:underline"
+                    >
+                      Open tasks
+                    </a>
+                  </div>
+                  <ul id="dashboard-recent-list" class="mt-2 divide-y divide-stone-100"></ul>
+                  <p id="dashboard-recent-empty" class="mt-4 hidden text-sm text-stone-500">
+                    No tasks recorded yet.
+                  </p>
+                </section>
+              </div>
+            </section>
+
+            <section id="view-add-staff" class="hidden" aria-labelledby="add-staff-title">
+              <div class="flex flex-wrap items-end justify-between gap-4">
+                <div>
+                  <h1
+                    id="add-staff-title"
+                    tabindex="-1"
+                    class="text-2xl font-semibold tracking-tight text-stone-900 sm:text-3xl"
+                  >
+                    Add staff
+                  </h1>
+                  <p class="mt-1.5 text-sm text-stone-500">
+                    Create a staff member and they will appear in the directory straight away.
+                  </p>
+                </div>
+                <p class="text-sm text-stone-400">Administrator</p>
+              </div>
+
+              <form
+                id="addstaff-form"
+                novalidate
+                class="mt-8 mx-auto w-full max-w-3xl rounded-lg border border-stone-200 bg-white p-6 shadow-sm"
+              >
+                <div
+                  id="addstaff-form-error"
+                  class="hidden rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800"
+                  role="alert"
+                ></div>
+
+                <p class="mt-4 text-xs text-stone-500">
+                  Fields marked with
+                  <span class="font-medium text-red-600" aria-hidden="true">*</span
+                  ><span class="sr-only">an asterisk</span> are required.
+                </p>
+
+                <h2 class="mt-6 text-sm font-semibold text-stone-900">Contact details</h2>
+
+                <div class="mt-5 grid grid-cols-1 gap-5 sm:grid-cols-2">
+                  <div>
+                    <label for="addstaff-firstname" class="block text-sm font-medium text-stone-700">
+                      First name <span class="text-red-600" aria-hidden="true">*</span>
+                    </label>
+                    <input
+                      id="addstaff-firstname"
+                      name="first_name"
+                      type="text"
+                      autocomplete="given-name"
+                      required
+                      class="mt-1.5 min-h-[48px] w-full rounded-lg border border-stone-200 bg-white px-4 py-3 text-sm text-stone-900 shadow-sm transition-all duration-200 focus:border-teal-600 focus:outline-none focus:ring-2 focus:ring-teal-600/20"
+                    />
+                    <p id="addstaff-firstname-error" class="mt-1.5 hidden text-sm text-red-600"></p>
+                  </div>
+
+                  <div>
+                    <label for="addstaff-lastname" class="block text-sm font-medium text-stone-700">
+                      Last name <span class="text-red-600" aria-hidden="true">*</span>
+                    </label>
+                    <input
+                      id="addstaff-lastname"
+                      name="last_name"
+                      type="text"
+                      autocomplete="family-name"
+                      required
+                      class="mt-1.5 min-h-[48px] w-full rounded-lg border border-stone-200 bg-white px-4 py-3 text-sm text-stone-900 shadow-sm transition-all duration-200 focus:border-teal-600 focus:outline-none focus:ring-2 focus:ring-teal-600/20"
+                    />
+                    <p id="addstaff-lastname-error" class="mt-1.5 hidden text-sm text-red-600"></p>
+                  </div>
+
+                  <div>
+                    <label for="addstaff-email" class="block text-sm font-medium text-stone-700">
+                      Email address <span class="text-red-600" aria-hidden="true">*</span>
+                    </label>
+                    <input
+                      id="addstaff-email"
+                      name="email"
+                      type="email"
+                      autocomplete="email"
+                      inputmode="email"
+                      required
+                      class="mt-1.5 min-h-[48px] w-full rounded-lg border border-stone-200 bg-white px-4 py-3 text-sm text-stone-900 shadow-sm transition-all duration-200 focus:border-teal-600 focus:outline-none focus:ring-2 focus:ring-teal-600/20"
+                    />
+                    <p id="addstaff-email-error" class="mt-1.5 hidden text-sm text-red-600"></p>
+                  </div>
+
+                  <div>
+                    <label for="addstaff-phone" class="block text-sm font-medium text-stone-700">
+                      Phone number
+                    </label>
+                    <input
+                      id="addstaff-phone"
+                      name="phone"
+                      type="tel"
+                      autocomplete="tel"
+                      inputmode="tel"
+                      class="mt-1.5 min-h-[48px] w-full rounded-lg border border-stone-200 bg-white px-4 py-3 text-sm text-stone-900 shadow-sm transition-all duration-200 focus:border-teal-600 focus:outline-none focus:ring-2 focus:ring-teal-600/20"
+                    />
+                  </div>
+                </div>
+
+                <div class="mt-8 border-t border-stone-200 pt-6">
+                  <h2 class="text-sm font-semibold text-stone-900">Position</h2>
+
+                  <p
+                    id="addstaff-options-loading"
+                    class="mt-4 hidden text-sm text-stone-500"
+                    role="status"
+                  >
+                    Loading departments and roles&hellip;
+                  </p>
+
+                  <div
+                    id="addstaff-options-error"
+                    class="mt-4 hidden rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800"
+                    role="alert"
+                  >
+                    <p id="addstaff-options-error-message">
+                      Unable to load departments and roles right now.
+                    </p>
+                    <button
+                      id="addstaff-options-retry"
+                      type="button"
+                      class="mt-2 min-h-[48px] rounded-md border border-amber-300 bg-white px-3.5 py-2 text-sm font-medium text-amber-900 shadow-sm transition-colors duration-200 hover:bg-amber-100"
+                    >
+                      Try again
+                    </button>
+                  </div>
+
+                  <div class="mt-5 grid grid-cols-1 gap-5 sm:grid-cols-2">
+                    <div class="sm:col-span-2">
+                      <label for="addstaff-jobtitle" class="block text-sm font-medium text-stone-700">
+                        Job title
+                      </label>
+                      <input
+                        id="addstaff-jobtitle"
+                        name="job_title"
+                        type="text"
+                        autocomplete="organization-title"
+                        class="mt-1.5 min-h-[48px] w-full rounded-lg border border-stone-200 bg-white px-4 py-3 text-sm text-stone-900 shadow-sm transition-all duration-200 focus:border-teal-600 focus:outline-none focus:ring-2 focus:ring-teal-600/20"
+                      />
+                    </div>
+
+                    <div>
+                      <label for="addstaff-department" class="block text-sm font-medium text-stone-700">
+                        Department
+                      </label>
+                      <div class="relative">
+                        <select
+                          id="addstaff-department"
+                          name="department_id"
+                          disabled
+                          class="mt-1.5 min-h-[48px] w-full appearance-none rounded-lg border border-stone-200 bg-white px-4 py-3 pr-10 text-sm text-stone-900 shadow-sm transition-all duration-200 focus:border-teal-600 focus:outline-none focus:ring-2 focus:ring-teal-600/20 disabled:cursor-not-allowed disabled:bg-stone-50 disabled:text-stone-400"
+                        >
+                          <option value="">No department</option>
+                        </select>
+                        <svg
+                          class="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-400"
+                          viewBox="0 0 20 20"
+                          fill="currentColor"
+                          aria-hidden="true"
+                        >
+                          <path
+                            fill-rule="evenodd"
+                            d="M5.22 8.22a.75.75 0 0 1 1.06 0L10 11.94l3.72-3.72a.75.75 0 1 1 1.06 1.06l-4.25 4.25a.75.75 0 0 1-1.06 0L5.22 9.28a.75.75 0 0 1 0-1.06Z"
+                            clip-rule="evenodd"
+                          />
+                        </svg>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label for="addstaff-role" class="block text-sm font-medium text-stone-700">
+                        Role
+                      </label>
+                      <div class="relative">
+                        <select
+                          id="addstaff-role"
+                          name="role_id"
+                          disabled
+                          class="mt-1.5 min-h-[48px] w-full appearance-none rounded-lg border border-stone-200 bg-white px-4 py-3 pr-10 text-sm text-stone-900 shadow-sm transition-all duration-200 focus:border-teal-600 focus:outline-none focus:ring-2 focus:ring-teal-600/20 disabled:cursor-not-allowed disabled:bg-stone-50 disabled:text-stone-400"
+                        >
+                          <option value="">No role</option>
+                        </select>
+                        <svg
+                          class="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-400"
+                          viewBox="0 0 20 20"
+                          fill="currentColor"
+                          aria-hidden="true"
+                        >
+                          <path
+                            fill-rule="evenodd"
+                            d="M5.22 8.22a.75.75 0 0 1 1.06 0L10 11.94l3.72-3.72a.75.75 0 1 1 1.06 1.06l-4.25 4.25a.75.75 0 0 1-1.06 0L5.22 9.28a.75.75 0 0 1 0-1.06Z"
+                            clip-rule="evenodd"
+                          />
+                        </svg>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label for="addstaff-location" class="block text-sm font-medium text-stone-700">
+                        Location
+                      </label>
+                      <input
+                        id="addstaff-location"
+                        name="location"
+                        type="text"
+                        class="mt-1.5 min-h-[48px] w-full rounded-lg border border-stone-200 bg-white px-4 py-3 text-sm text-stone-900 shadow-sm transition-all duration-200 focus:border-teal-600 focus:outline-none focus:ring-2 focus:ring-teal-600/20"
+                      />
+                    </div>
+
+                    <div>
+                      <label for="addstaff-status" class="block text-sm font-medium text-stone-700">
+                        Employment status <span class="text-red-600" aria-hidden="true">*</span>
+                      </label>
+                      <div class="relative">
+                        <select
+                          id="addstaff-status"
+                          name="employment_status"
+                          required
+                          class="mt-1.5 min-h-[48px] w-full appearance-none rounded-lg border border-stone-200 bg-white px-4 py-3 pr-10 text-sm text-stone-900 shadow-sm transition-all duration-200 focus:border-teal-600 focus:outline-none focus:ring-2 focus:ring-teal-600/20"
+                        >
+                          <option value="Active" selected>Active</option>
+                          <option value="On Leave">On Leave</option>
+                          <option value="Inactive">Inactive</option>
+                        </select>
+                        <svg
+                          class="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-400"
+                          viewBox="0 0 20 20"
+                          fill="currentColor"
+                          aria-hidden="true"
+                        >
+                          <path
+                            fill-rule="evenodd"
+                            d="M5.22 8.22a.75.75 0 0 1 1.06 0L10 11.94l3.72-3.72a.75.75 0 1 1 1.06 1.06l-4.25 4.25a.75.75 0 0 1-1.06 0L5.22 9.28a.75.75 0 0 1 0-1.06Z"
+                            clip-rule="evenodd"
+                          />
+                        </svg>
+                      </div>
+                      <p id="addstaff-status-error" class="mt-1.5 hidden text-sm text-red-600"></p>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="mt-8 border-t border-stone-200 pt-6">
+                  <h2 class="text-sm font-semibold text-stone-900">Profile</h2>
+
+                  <div class="mt-5 grid grid-cols-1 gap-5">
+                    <div>
+                      <label for="addstaff-avatar" class="block text-sm font-medium text-stone-700">
+                        Avatar image address
+                      </label>
+                      <input
+                        id="addstaff-avatar"
+                        name="avatar_url"
+                        type="url"
+                        inputmode="url"
+                        placeholder="https://example.com/photo.jpg"
+                        class="mt-1.5 min-h-[48px] w-full rounded-lg border border-stone-200 bg-white px-4 py-3 text-sm text-stone-900 shadow-sm transition-all duration-200 placeholder:text-stone-400 focus:border-teal-600 focus:outline-none focus:ring-2 focus:ring-teal-600/20"
+                      />
+                      <p id="addstaff-avatar-error" class="mt-1.5 hidden text-sm text-red-600"></p>
+                    </div>
+
+                    <div>
+                      <label for="addstaff-bio" class="block text-sm font-medium text-stone-700">
+                        Biography
+                      </label>
+                      <textarea
+                        id="addstaff-bio"
+                        name="bio"
+                        rows="4"
+                        class="mt-1.5 w-full rounded-lg border border-stone-200 bg-white px-4 py-3 text-sm text-stone-900 shadow-sm transition-all duration-200 focus:border-teal-600 focus:outline-none focus:ring-2 focus:ring-teal-600/20"
+                      ></textarea>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="mt-8 flex flex-wrap gap-3 border-t border-stone-200 pt-6">
+                  <button
+                    id="addstaff-submit"
+                    type="submit"
+                    class="flex min-h-[48px] items-center justify-center rounded-lg bg-teal-700 px-5 py-3 text-sm font-semibold text-white transition-colors duration-200 hover:bg-teal-800 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    <span>Add staff</span>
+                  </button>
+                  <a
+                    href="#directory"
+                    class="flex min-h-[48px] items-center rounded-lg border border-stone-200 bg-white px-5 py-3 text-sm font-medium text-stone-700 shadow-sm transition-colors duration-200 hover:bg-stone-50"
+                  >
+                    Cancel
+                  </a>
+                </div>
+              </form>
+            </section>
+
+            <section id="view-tasks" class="hidden" aria-labelledby="tasks-title">
+              <div class="flex flex-wrap items-end justify-between gap-4">
+                <div>
+                  <h1
+                    id="tasks-title"
+                    tabindex="-1"
+                    class="text-2xl font-semibold tracking-tight text-stone-900 sm:text-3xl"
+                  >
+                    Tasks
+                  </h1>
+                  <p class="mt-1.5 max-w-xl text-sm text-stone-500">
+                    Create, assign and track tasks for staff members.
+                  </p>
+                </div>
+                <div data-admin-only class="hidden">
+                  <button
+                    id="tasks-new-button"
+                    type="button"
+                    class="flex min-h-[48px] items-center rounded-lg bg-teal-700 px-4 py-3 text-sm font-semibold text-white transition-colors duration-200 hover:bg-teal-800 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    New task
+                  </button>
+                </div>
+              </div>
+
+              <div
+                id="tasks-status"
+                class="mt-6 hidden rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800"
+                role="status"
+                aria-live="polite"
+              >
+                <div class="flex flex-wrap items-center justify-between gap-3">
+                  <p id="tasks-status-message" class="min-w-0 pr-2"></p>
+                  <button
+                    id="tasks-status-dismiss"
+                    type="button"
+                    class="min-h-[40px] shrink-0 rounded-md px-2 py-1 text-sm font-medium text-emerald-800 underline-offset-2 hover:underline"
+                  >
+                    Dismiss
+                  </button>
+                </div>
+              </div>
+
+              <div
+                id="tasks-action-error"
+                class="mt-6 hidden rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800"
+                role="alert"
+              >
+                <p id="tasks-action-error-message" class="min-w-0"></p>
+              </div>
+
+              <div class="mt-8 flex flex-wrap items-center gap-3">
+                <div class="flex min-w-0 flex-1 flex-col gap-3 sm:flex-row">
+                  <div class="min-w-0 flex-1">
+                    <label for="tasks-filter-staff" class="sr-only">Filter by staff member</label>
+                    <select
+                      id="tasks-filter-staff"
+                      class="w-full rounded-lg border border-stone-200 bg-white px-3 py-2.5 text-sm text-stone-700 shadow-sm transition-colors duration-200 hover:border-stone-300 focus:border-teal-600 focus:outline-none focus:ring-2 focus:ring-teal-600/20 disabled:cursor-not-allowed disabled:opacity-60 sm:min-h-[48px]"
+                    >
+                      <option value="">All staff</option>
+                    </select>
+                  </div>
+                  <div class="min-w-0 flex-1">
+                    <label for="tasks-filter-status" class="sr-only">Filter by task status</label>
+                    <select
+                      id="tasks-filter-status"
+                      class="w-full rounded-lg border border-stone-200 bg-white px-3 py-2.5 text-sm text-stone-700 shadow-sm transition-colors duration-200 hover:border-stone-300 focus:border-teal-600 focus:outline-none focus:ring-2 focus:ring-teal-600/20 sm:min-h-[48px]"
+                    >
+                      <option value="">All statuses</option>
+                      <option value="Pending">Pending</option>
+                      <option value="In Progress">In Progress</option>
+                      <option value="Completed">Completed</option>
+                      <option value="On Hold">On Hold</option>
+                      <option value="Cancelled">Cancelled</option>
+                    </select>
+                  </div>
+                  <div class="min-w-0 flex-1">
+                    <label for="tasks-filter-priority" class="sr-only">Filter by priority</label>
+                    <select
+                      id="tasks-filter-priority"
+                      class="w-full rounded-lg border border-stone-200 bg-white px-3 py-2.5 text-sm text-stone-700 shadow-sm transition-colors duration-200 hover:border-stone-300 focus:border-teal-600 focus:outline-none focus:ring-2 focus:ring-teal-600/20 sm:min-h-[48px]"
+                    >
+                      <option value="">All priorities</option>
+                      <option value="Low">Low</option>
+                      <option value="Medium">Medium</option>
+                      <option value="High">High</option>
+                      <option value="Urgent">Urgent</option>
+                    </select>
+                  </div>
+                </div>
+                <button
+                  id="tasks-clear-filters"
+                  type="button"
+                  class="min-h-[48px] rounded-lg border border-stone-200 bg-white px-3.5 py-2.5 text-sm font-medium text-stone-600 shadow-sm transition-colors duration-200 hover:border-stone-300 hover:bg-stone-50 hover:text-stone-900"
+                >
+                  Clear filters
+                </button>
+              </div>
+
+              <p
+                id="tasks-staff-warning"
+                class="mt-3 hidden text-sm text-amber-700"
+                role="status"
+              >
+                Could not load the staff list.
+                <button
+                  id="tasks-staff-retry"
+                  type="button"
+                  class="min-h-[40px] rounded-md font-medium text-teal-700 underline-offset-2 hover:underline"
+                >
+                  Retry
+                </button>
+              </p>
+
+              <div class="mt-8 flex flex-wrap items-end justify-between gap-4">
+                <div class="min-w-0">
+                  <h2 class="text-sm font-semibold text-stone-900">All tasks</h2>
+                  <p id="tasks-count" class="mt-1 text-sm text-stone-500">Loading&hellip;</p>
+                </div>
+              </div>
+
+              <div
+                id="tasks-loading"
+                class="mt-6 hidden"
+                aria-live="polite"
+                aria-busy="true"
+              >
+                <p class="text-sm text-stone-500">Loading tasks&hellip;</p>
+                <div class="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
+                  <div class="rounded-lg border border-stone-200 bg-white p-5 shadow-sm">
+                    <div class="h-4 w-2/3 animate-pulse rounded bg-stone-200"></div>
+                    <div class="mt-3 h-3 w-1/2 animate-pulse rounded bg-stone-200"></div>
+                    <div class="mt-5 h-3 w-full animate-pulse rounded bg-stone-200"></div>
+                    <div class="mt-5 h-3 w-5/6 animate-pulse rounded bg-stone-200"></div>
+                  </div>
+                  <div class="rounded-lg border border-stone-200 bg-white p-5 shadow-sm">
+                    <div class="h-4 w-2/3 animate-pulse rounded bg-stone-200"></div>
+                    <div class="mt-3 h-3 w-1/2 animate-pulse rounded bg-stone-200"></div>
+                    <div class="mt-5 h-3 w-full animate-pulse rounded bg-stone-200"></div>
+                    <div class="mt-5 h-3 w-5/6 animate-pulse rounded bg-stone-200"></div>
+                  </div>
+                </div>
+              </div>
+
+              <div
+                id="tasks-empty"
+                class="mt-6 hidden rounded-lg border border-dashed border-stone-300 bg-white px-6 py-16 text-center"
+              >
+                <p class="text-sm font-medium text-stone-900">No tasks found.</p>
+                <p class="mt-1 text-sm text-stone-500">
+                  Try adjusting the filters, or create a new task.
+                </p>
+              </div>
+
+              <div
+                id="tasks-error"
+                class="mt-6 hidden rounded-lg border border-red-200 bg-red-50 px-6 py-8 text-center"
+                role="alert"
+              >
+                <p id="tasks-error-message" class="text-sm font-medium text-red-900">
+                  Unable to load tasks right now.
+                </p>
+                <p id="tasks-error-detail" class="mt-1 text-sm text-red-700">
+                  Please try again.
+                </p>
+                <button
+                  id="tasks-retry"
+                  type="button"
+                  class="mt-4 min-h-[48px] rounded-md border border-red-200 bg-white px-3.5 py-2 text-sm font-medium text-red-800 transition-colors duration-200 hover:bg-red-100"
+                >
+                  Try again
+                </button>
+              </div>
+
+              <ul id="tasks-list" class="mt-6 grid grid-cols-1 gap-4 lg:grid-cols-2"></ul>
+            </section>
           </div>
         </main>
       </div>
@@ -536,5 +1672,204 @@
         </dl>
       </div>
     </div>
+
+    <div
+      id="task-modal"
+      class="fixed inset-0 z-40 hidden items-center justify-center p-4"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="task-modal-title"
+      aria-hidden="true"
+    >
+      <div
+        id="task-modal-backdrop"
+        class="modal-backdrop absolute inset-0 bg-stone-900/40"
+        aria-hidden="true"
+      ></div>
+
+      <div
+        class="modal-panel relative z-10 max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-xl border border-stone-200 bg-white p-6 shadow-xl"
+        role="document"
+      >
+        <div class="flex items-start justify-between gap-4">
+          <h2 id="task-modal-title" class="text-lg font-semibold text-stone-900">
+            Create task
+          </h2>
+          <button
+            id="task-modal-close"
+            type="button"
+            class="-mr-1 -mt-1 rounded-md p-1.5 text-stone-400 transition-colors duration-200 hover:bg-stone-100 hover:text-stone-700"
+            aria-label="Close task form"
+          >
+            <svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+              <path
+                d="M6.28 5.22a.75.75 0 0 0-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 1 0 1.06 1.06L10 11.06l3.72 3.72a.75.75 0 1 0 1.06-1.06L11.06 10l3.72-3.72a.75.75 0 0 0-1.06-1.06L10 8.94 6.28 5.22Z"
+              />
+            </svg>
+          </button>
+        </div>
+
+        <form id="task-form" novalidate class="mt-4">
+          <div
+            id="task-form-error"
+            class="hidden rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800"
+            role="alert"
+          ></div>
+
+          <div class="mt-4">
+            <label for="task-title" class="block text-sm font-medium text-stone-700">
+              Title <span class="text-red-600" aria-hidden="true">*</span>
+            </label>
+            <input
+              id="task-title"
+              name="title"
+              type="text"
+              required
+              class="mt-1.5 min-h-[48px] w-full rounded-lg border border-stone-200 bg-white px-4 py-3 text-sm text-stone-900 shadow-sm transition-all duration-200 focus:border-teal-600 focus:outline-none focus:ring-2 focus:ring-teal-600/20"
+            />
+            <p id="task-title-error" class="mt-1.5 hidden text-sm text-red-600"></p>
+          </div>
+
+          <div class="mt-4">
+            <label for="task-staff" class="block text-sm font-medium text-stone-700">
+              Assigned staff member <span class="text-red-600" aria-hidden="true">*</span>
+            </label>
+            <select
+              id="task-staff"
+              name="staff_id"
+              required
+              class="mt-1.5 min-h-[48px] w-full rounded-lg border border-stone-200 bg-white px-4 py-3 text-sm text-stone-900 shadow-sm transition-all duration-200 focus:border-teal-600 focus:outline-none focus:ring-2 focus:ring-teal-600/20 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              <option value="">Choose a staff member</option>
+            </select>
+            <p id="task-staff-error" class="mt-1.5 hidden text-sm text-red-600"></p>
+          </div>
+
+          <div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div>
+              <label for="task-priority" class="block text-sm font-medium text-stone-700">
+                Priority
+              </label>
+              <select
+                id="task-priority"
+                name="priority"
+                class="mt-1.5 min-h-[48px] w-full rounded-lg border border-stone-200 bg-white px-4 py-3 text-sm text-stone-900 shadow-sm transition-all duration-200 focus:border-teal-600 focus:outline-none focus:ring-2 focus:ring-teal-600/20"
+              >
+                <option value="Low">Low</option>
+                <option value="Medium" selected>Medium</option>
+                <option value="High">High</option>
+                <option value="Urgent">Urgent</option>
+              </select>
+              <p id="task-priority-error" class="mt-1.5 hidden text-sm text-red-600"></p>
+            </div>
+            <div>
+              <label for="task-due" class="block text-sm font-medium text-stone-700">
+                Due date
+              </label>
+              <input
+                id="task-due"
+                name="due_date"
+                type="date"
+                class="mt-1.5 min-h-[48px] w-full rounded-lg border border-stone-200 bg-white px-4 py-3 text-sm text-stone-900 shadow-sm transition-all duration-200 focus:border-teal-600 focus:outline-none focus:ring-2 focus:ring-teal-600/20"
+              />
+              <p id="task-due-error" class="mt-1.5 hidden text-sm text-red-600"></p>
+            </div>
+          </div>
+
+          <div class="mt-4">
+            <label for="task-description" class="block text-sm font-medium text-stone-700">
+              Description
+            </label>
+            <textarea
+              id="task-description"
+              name="description"
+              rows="4"
+              class="mt-1.5 w-full rounded-lg border border-stone-200 bg-white px-4 py-3 text-sm text-stone-900 shadow-sm transition-all duration-200 focus:border-teal-600 focus:outline-none focus:ring-2 focus:ring-teal-600/20"
+            ></textarea>
+            <p id="task-description-error" class="mt-1.5 hidden text-sm text-red-600"></p>
+          </div>
+
+          <p class="mt-4 text-xs text-stone-500">
+            New tasks start as Pending. Task status is changed from the task list.
+          </p>
+
+          <div class="mt-6 flex flex-wrap gap-3 border-t border-stone-200 pt-5">
+            <button
+              id="task-submit"
+              type="submit"
+              class="flex min-h-[48px] items-center justify-center rounded-lg bg-teal-700 px-5 py-3 text-sm font-semibold text-white transition-colors duration-200 hover:bg-teal-800 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              <span>Create task</span>
+            </button>
+            <button
+              id="task-cancel"
+              type="button"
+              class="flex min-h-[48px] items-center rounded-lg border border-stone-200 bg-white px-5 py-3 text-sm font-medium text-stone-700 shadow-sm transition-colors duration-200 hover:bg-stone-50 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              Cancel
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <div
+      id="task-delete-modal"
+      class="fixed inset-0 z-40 hidden items-center justify-center p-4"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="task-delete-title"
+      aria-hidden="true"
+    >
+      <div
+        id="task-delete-modal-backdrop"
+        class="modal-backdrop absolute inset-0 bg-stone-900/40"
+        aria-hidden="true"
+      ></div>
+
+      <div
+        class="modal-panel relative z-10 w-full max-w-md rounded-xl border border-stone-200 bg-white p-6 shadow-xl"
+        role="document"
+      >
+        <div class="flex items-start justify-between gap-4">
+          <h2 id="task-delete-title" class="text-lg font-semibold text-stone-900">
+            Delete task?
+          </h2>
+          <button
+            id="task-delete-close"
+            type="button"
+            class="-mr-1 -mt-1 rounded-md p-1.5 text-stone-400 transition-colors duration-200 hover:bg-stone-100 hover:text-stone-700"
+            aria-label="Close delete confirmation"
+          >
+            <svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+              <path
+                d="M6.28 5.22a.75.75 0 0 0-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 1 0 1.06 1.06L10 11.06l3.72 3.72a.75.75 0 1 0 1.06-1.06L11.06 10l3.72-3.72a.75.75 0 0 0-1.06-1.06L10 8.94 6.28 5.22Z"
+              />
+            </svg>
+          </button>
+        </div>
+
+        <p id="task-delete-message" class="mt-3 text-sm leading-relaxed text-stone-600"></p>
+
+        <div class="mt-6 flex flex-wrap gap-3">
+          <button
+            id="task-delete-confirm"
+            type="button"
+            class="flex min-h-[48px] items-center justify-center rounded-lg bg-red-700 px-5 py-3 text-sm font-semibold text-white transition-colors duration-200 hover:bg-red-800 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            <span>Delete task</span>
+          </button>
+          <button
+            id="task-delete-cancel"
+            type="button"
+            class="flex min-h-[48px] items-center rounded-lg border border-stone-200 bg-white px-5 py-3 text-sm font-medium text-stone-700 shadow-sm transition-colors duration-200 hover:bg-stone-50 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            Cancel
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <p id="tasks-announce" class="sr-only" role="status" aria-live="polite"></p>
   </body>
 </html>

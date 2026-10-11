@@ -153,6 +153,120 @@
     applyFilters();
   }
 
+  function optionValues(select) {
+    if (!select || !select.options) {
+      return [];
+    }
+
+    const values = [];
+
+    for (let i = 0; i < select.options.length; i += 1) {
+      values.push(select.options[i].value);
+    }
+
+    return values;
+  }
+
+  /*
+   * The dashboard links carry a filter intent in the fragment query (for
+   * example `#directory?status=On Leave`). When the directory view is entered
+   * with one, apply only that intent and restore a clean `#directory` hash.
+   * Entering through a plain `#directory` keeps whatever filters were last
+   * chosen. Unknown values are dropped rather than sent to the backend.
+   */
+  function applyViewQueryIntent() {
+    const queryIndex = window.location.hash.indexOf('?');
+
+    if (queryIndex === -1) {
+      return false;
+    }
+
+    let params;
+
+    try {
+      params = new URLSearchParams(window.location.hash.slice(queryIndex + 1));
+    } catch (error) {
+      return false;
+    }
+
+    const searchInput = document.getElementById(SEARCH_INPUT_ID);
+    const departmentSelect = document.getElementById(DEPARTMENT_SELECT_ID);
+    const roleSelect = document.getElementById(ROLE_SELECT_ID);
+    const statusSelect = document.getElementById(STATUS_SELECT_ID);
+
+    const readIntent = function (key) {
+      const value = params.get(key);
+      return typeof value === 'string' ? value.trim() : '';
+    };
+
+    const search = readIntent('search');
+    const department = readIntent('department');
+    const role = readIntent('role');
+    const status = readIntent('status');
+
+    const searchValid = Boolean(search && searchInput);
+    const departmentValid = Boolean(department && departmentSelect && optionValues(departmentSelect).indexOf(department) !== -1);
+    const roleValid = Boolean(role && roleSelect && optionValues(roleSelect).indexOf(role) !== -1);
+    const statusValid = Boolean(status && statusSelect && optionValues(statusSelect).indexOf(status) !== -1);
+
+    if (!searchValid && !departmentValid && !roleValid && !statusValid) {
+      /* An unrecognised query (or none at all) leaves the current filters
+         alone, so a plain `#directory` never resets what the user chose. */
+      return false;
+    }
+
+    /*
+     * A link from the dashboard is a complete filter command: anything not
+     * part of the link is reset first, so arriving with
+     * `#directory?status=On Leave` never inherits an old search, department or
+     * role choice.
+     */
+    state.search = '';
+    state.department = '';
+    state.role = '';
+    state.status = '';
+
+    if (searchInput) {
+      searchInput.value = '';
+    }
+
+    if (departmentSelect) {
+      departmentSelect.value = '';
+    }
+
+    if (roleSelect) {
+      roleSelect.value = '';
+    }
+
+    if (statusSelect) {
+      statusSelect.value = '';
+    }
+
+    if (searchValid) {
+      state.search = search;
+      searchInput.value = search;
+    }
+
+    if (departmentValid) {
+      state.department = department;
+      departmentSelect.value = department;
+    }
+
+    if (roleValid) {
+      state.role = role;
+      roleSelect.value = role;
+    }
+
+    if (statusValid) {
+      state.status = status;
+      statusSelect.value = status;
+    }
+
+    history.replaceState(null, '', '#directory');
+    applyFilters();
+    return true;
+  }
+
   function init() {
     if (initialised) {
       return;
@@ -185,10 +299,24 @@
     if (clearButton) {
       clearButton.addEventListener('click', handleClearFilters);
     }
+
+    document.addEventListener('staffdirectory:view', function (event) {
+      const detail = event && event.detail;
+
+      if (detail && detail.view === 'directory') {
+        applyViewQueryIntent();
+      }
+    });
   }
 
+  /*
+   * `clear` resets the search box, every filter and the staff list in one step.
+   * It is used after a staff member is created so the refreshed directory is
+   * guaranteed to show the new record whatever filters were applied before.
+   */
   window.StaffDirectoryFilters = {
     init,
-    retry
+    retry,
+    clear: handleClearFilters
   };
 })();

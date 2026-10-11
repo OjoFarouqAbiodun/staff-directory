@@ -10,8 +10,12 @@ records, filtering staff, and viewing detailed staff profiles, so that a colleag
 details, department, role and location can be found quickly instead of by asking around or
 searching spreadsheets.
 
-The application is a read-only directory. Staff information is read from a database through a
-REST API and displayed in the browser; there is no data-entry interface.
+The directory itself is open to everyone: staff information is read from a database through a
+REST API and displayed in the browser. A signed-in administrator can add staff members through a
+protected endpoint and an Add Staff screen, manage tasks assigned to staff through an
+administrator-only Tasks screen, and view an administrator-only Dashboard that summarises the
+directory and current task workload from the live database; everything else in the interface
+stays read-only.
 
 > **Sample data:** all staff records currently in the database are **fictional**, created
 > specifically for demonstration and testing. No real person's personal information is used.
@@ -37,9 +41,38 @@ The application currently provides:
 - **Loading state** — skeleton cards shown while data is being fetched
 - **Empty state** — a clear "No staff members found" message when nothing matches
 - **Error state with retry** — a friendly message with a "Try again" button if a request fails
+- **Administrator sign in and sign up** — a Sign In screen and a Sign Up screen wired to the
+  existing `/api/auth/*` endpoints, with visible labels, autocomplete, inline validation, loading
+  and disabled states, and the backend's own error messages
+- **Session detection on load** — the browser asks `/api/auth/me` at start-up and the navigation
+  shows either **Sign In / Sign Up** or the signed-in administrator's identity and **Sign out**
+- **Staff creation (administrators only)** — a signed-in administrator can add a staff member
+  from a dedicated Add Staff screen; the new record appears in the directory immediately without
+  a page reload, while visitors without a session never see or use the form
+- **Task management API (administrators only)** — protected endpoints to create, list, filter,
+  view, update, reassign, change the status of, and delete tasks assigned to staff members, with
+  every task tracked to the administrator who created it
+- **Task management screen (administrators only)** — a signed-in administrator can create and edit
+  tasks, assign them to any staff member, change a task's status from the list, and delete a task
+  after a confirmation that names it; visitors without a session never see or use the screen
+- **Task filtering** — the task list filters by staff member, status and priority, combined or
+  individually, with one click to clear them
+- **Task status controls** — each task card carries its own status dropdown that updates the task
+  through `PATCH /api/tasks/:id/status`; editing a task never changes its status (the edit form has
+  no status field, matching the API contract)
+- **Open the assigned staff profile** — the staff member's name on a task card opens the existing
+  profile modal, so the task view reuses the directory's staff details panel
+- **Dashboard (administrators only)** — a signed-in administrator sees summary cards for staff
+  and task counts, an employment-status breakdown, a task-status breakdown, overdue workload,
+  the staff members carrying the most open tasks, and the most recently updated tasks, all
+  calculated from the live database at request time
+- **Dashboard links into the app** — each summary card and breakdown row links to the directory
+  or Tasks view with the matching filter already applied (for example **On Leave** opens the
+  directory filtered to On Leave staff, and **Pending** opens the task list filtered to Pending)
 - **Responsive desktop / tablet / mobile interface**
 - **REST API** — the frontend reads all data from the backend over HTTP
-- **SQLite database** — staff, departments and roles stored in a local SQLite file
+- **SQLite database** — six related tables (`departments`, `roles`, `staff`, `admins`,
+  `admin_sessions`, `tasks`) stored in a local SQLite file
 
 ---
 
@@ -74,7 +107,7 @@ staff-directory/
 │
 ├── public/                         # Everything the browser downloads
 │   ├── index.html                  # Page shell: sidebar, header, search, filters,
-│   │                               # states, staff grid, profile modal
+│   │                               # states, staff grid, add-staff and tasks views, modals
 │   └── assets/
 │       ├── css/
 │       │   └── styles.css          # Small custom CSS on top of Tailwind
@@ -86,6 +119,10 @@ staff-directory/
 │           ├── ui.js               # Renders staff cards, filters and UI states
 │           ├── filters.js          # Search/filter state and requests
 │           ├── modal.js            # Profile modal open/close, focus and keyboard
+│           ├── auth.js             # Sign-in/sign-up/session state and the view router
+│           ├── staff-create.js     # Add Staff screen (form, validation, save)
+│           ├── tasks.js            # Tasks screen (list, filters, dialogs, status, delete)
+│           ├── dashboard.js        # Dashboard screen (summary, breakdowns, lists)
 │           └── app.js              # Startup: initial load and module wiring
 │
 ├── src/                            # Backend code
@@ -95,7 +132,10 @@ staff-directory/
 │   ├── controllers/                # Handle HTTP requests, send JSON
 │   │   ├── staffController.js
 │   │   ├── departmentController.js
-│   │   └── roleController.js
+│   │   ├── roleController.js
+│   │   ├── authController.js
+│   │   ├── taskController.js
+│   │   └── dashboardController.js
 │   ├── database/
 │   │   ├── db.js                   # Opens/creates the SQLite connection
 │   │   ├── schema.sql              # Table definitions, keys and indexes
@@ -106,12 +146,19 @@ staff-directory/
 │   ├── repositories/               # All SQL queries live here
 │   │   ├── staffRepository.js
 │   │   ├── departmentRepository.js
-│   │   └── roleRepository.js
+│   │   ├── roleRepository.js
+│   │   ├── adminRepository.js
+│   │   ├── sessionRepository.js
+│   │   ├── taskRepository.js
+│   │   └── dashboardRepository.js
 │   └── routes/
 │       ├── healthRoutes.js
 │       ├── staffRoutes.js
 │       ├── departmentRoutes.js
-│       └── roleRoutes.js
+│       ├── roleRoutes.js
+│       ├── authRoutes.js
+│       ├── taskRoutes.js
+│       └── dashboardRoutes.js
 │
 ├── .gitignore
 ├── package.json                    # Dependencies and npm scripts
@@ -123,9 +170,11 @@ staff-directory/
 
 **Key folders and files**
 
-- **`public/`** — the frontend. `index.html` holds the page structure; the five JavaScript
-  files are loaded in order (`api.js` first, then `ui.js`, `filters.js`, `modal.js`, then
-  `app.js`) and each has a single responsibility.
+- **`public/`** — the frontend. `index.html` holds the page structure; the JavaScript modules are
+  loaded in order (`api.js` first, then `ui.js`, `filters.js`, `modal.js`, `auth.js`,
+  `staff-create.js`, `tasks.js`, `dashboard.js`, then `app.js`) and each has a single
+  responsibility. The admin-only views (`account`, `dashboard`, `add-staff` and `tasks`) are
+  gated by the router in `auth.js` and are only reached through a live administrator session.
 - **`src/`** — the backend, split into routes → controllers → repositories. Repositories are
   the only place where SQL is written.
 - **`data/`** — holds the SQLite database. The database file is created automatically by the
@@ -263,7 +312,8 @@ every restart and never duplicates rows.
 The optional `DB_FILE` environment variable overrides the database location and allows the database
 file to be placed on a persistent disk. Without a persistent disk, the database is created inside
 the service's own filesystem and is therefore re-initialised from scratch on every restart or
-redeploy. The application is read-only, so no data is lost when this happens.
+redeploy. The sample directory data is restored by seeding, so only changes made since the restart
+(the signed-in administrators and any staff members created) would be lost.
 
 ---
 
@@ -286,11 +336,58 @@ redeploy. The application is read-only, so no data is lost when this happens.
 If a request fails, an error message appears with a **Try again** button, and the controls you
 had selected are left untouched so you can retry without re-entering anything.
 
+### Signing in and signing up
+
+9. **Sign up** — open **Create account** in the sidebar (or **Sign up** in the mobile header),
+   fill in your full name, username, email and a password of at least 8 characters, then submit.
+   The account is created and you are signed in straight away, landing on the account view with
+   no second sign-in step.
+10. **Sign in** — open **Sign in** and enter your email and password. While a request is in
+    progress the submit button is disabled and shows a loading label, and duplicate submissions
+    are ignored. Once signed in, the **Sign In / Sign Up** links are replaced by your identity
+    and a **Sign out** button.
+11. **Your account** — the account view shows your full name, username and email. From here a
+    signed-in administrator can **Dashboard**, **Add staff**, **Manage tasks** or browse the
+    directory using the actions on the view.
+12. **Add staff** — the **Add staff** action is available only while signed in, from the sidebar,
+    the directory header and the account view. It opens a form with contact details, position and
+    profile fields; department and role options come from the live backend endpoints. On a
+    successful save you are returned to the directory, where a confirmation is announced and the
+    new record is already on screen.
+13. **Dashboard** — the **Dashboard** action is available only while signed in, from the
+    sidebar, the directory header and the account view. It shows summary cards for total staff,
+    active staff, total tasks and overdue tasks, staff counts by employment status, task counts by
+    status, the current overdue workload, the staff members carrying the most open tasks, and the
+    most recently updated tasks. Every number is recalculated from the database when the view is
+    opened. Clicking a summary card or one of the breakdown rows jumps to the directory or the
+    Tasks view with the matching filter already applied — for example **On Leave** opens the
+    directory filtered to On Leave staff, and **Pending** opens the task list filtered to Pending
+    tasks.
+14. **Manage tasks** — the **Tasks** action is available only while signed in, from the sidebar,
+    the directory header and the account view. The tasks view lists every task with its priority,
+    status and due date. **New task** opens a form where you pick the assigned staff member,
+    priority and due date; the task starts as **Pending**. Each card's status dropdown updates that
+    task (status is never changed by editing). **Edit** reopens the form to change the title,
+    assignment, priority, description or due date. **Delete** asks for confirmation by naming the
+    task, and cancelling leaves it untouched. The staff member's name on a card opens the existing
+    profile modal, and the list can be filtered by staff, status and priority (combined or on their
+    own) and cleared with one button.
+15. **Sign out** — use **Sign out** in the sidebar, the mobile header or the account view. The
+    server ends the session first; if that request fails you remain signed in and a message
+    explains what happened instead of the interface pretending you were signed out.
+
+Sign in and sign up use the same navigation: `#signin`, `#signup`, `#account`, `#directory` and
+the administrator-only `#dashboard`, `#add-staff` and `#tasks`. The server is the source of truth,
+so the state is re-checked against `/api/auth/me` on every page load. Browsing, searching and
+filtering the directory never requires an account.
+
 ---
 
 ## 10. API Endpoints
 
-The backend exposes seven read-only endpoints:
+The backend exposes seven public read-only endpoints, four administrator authentication endpoints,
+one administrator-protected staff-creation endpoint, seven administrator-protected
+task-management endpoints and one administrator-protected dashboard endpoint:
 
 | Method | Endpoint             | Purpose               |
 | ------ | -------------------- | --------------------- |
@@ -301,6 +398,31 @@ The backend exposes seven read-only endpoints:
 | GET    | /api/departments/:id | Get one department    |
 | GET    | /api/roles           | Get roles             |
 | GET    | /api/roles/:id       | Get one role          |
+
+| Method | Endpoint            | Purpose                          |
+| ------ | ------------------- | -------------------------------- |
+| POST   | /api/auth/register  | Create an administrator account  |
+| POST   | /api/auth/login     | Sign in and start a session      |
+| POST   | /api/auth/logout    | End the current session          |
+| GET    | /api/auth/me        | Get the signed-in administrator  |
+| POST   | /api/staff          | Create a staff member (administrator session required) |
+
+| Method | Endpoint                | Purpose                                               |
+| ------ | ----------------------- | ----------------------------------------------------- |
+| GET    | /api/tasks              | List or filter tasks (newest first)                   |
+| GET    | /api/tasks/:id          | Get one task with its assigned staff details          |
+| POST   | /api/tasks              | Create and assign a task                              |
+| PATCH  | /api/tasks/:id/status   | Update only a task's status                           |
+| PUT    | /api/tasks/:id          | Update a task's editable details                      |
+| DELETE | /api/tasks/:id          | Delete a task                                         |
+| GET    | /api/staff/:id/tasks    | List one staff member's tasks (administrator session required) |
+| GET    | /api/admin/dashboard    | Staff/task summary and workload lists (administrator session required) |
+
+The seven directory endpoints remain public and require no authentication. The `/api/auth/*`
+endpoints are additive and need no cookie beyond the one they set themselves. Every task
+endpoint, the `/api/staff/:id/tasks` sub-route and the dashboard endpoint require a valid
+`admin_session` cookie and answer HTTP 401 without one, using the same authentication errors as
+the auth endpoints. No existing endpoint changed its method, path or response shape.
 
 All responses use the same JSON envelope. A successful response:
 
@@ -321,6 +443,141 @@ An error response:
   }
 }
 ```
+
+### Administrator authentication
+
+| Endpoint                  | Body                                        | Success                                                |
+| ------------------------- | ------------------------------------------- | ------------------------------------------------------ |
+| `POST /api/auth/register` | `username`, `email`, `password`, `full_name` | 201 — creates the account and starts a session         |
+| `POST /api/auth/login`    | `email`, `password`                         | 200 — starts a new session                             |
+| `POST /api/auth/logout`   | none                                        | 200 — invalidates the session and clears the cookie    |
+| `GET /api/auth/me`        | none                                        | 200 with `data.admin` = `id`, `username`, `email`, `full_name` |
+
+Registration requires a username of 3–32 characters drawn from letters, numbers, `.`, `-` and `_`,
+a password of 8–128 characters, a well-formed email address and a full name of 2–100 characters.
+A duplicate username or a duplicate email is rejected with HTTP 409.
+
+Authentication state is carried by an `admin_session` cookie that is `HttpOnly`, `SameSite=Lax`
+and scoped to `Path=/`, expires after 7 days, and gains `Secure` when `NODE_ENV=production`.
+Unknown, expired or already-logged-out sessions are rejected with HTTP 401, as is `/api/auth/me`
+when no cookie is present. A failed login returns HTTP 401 with the single generic message
+`Invalid email or password`, so responses never reveal whether an account exists.
+
+### Creating staff
+
+`POST /api/staff` creates a staff member and is one of the protected routes. It requires a
+valid administrator session (the `admin_session` cookie); otherwise it answers HTTP 401 with the
+same authentication errors the auth endpoints use.
+
+| Field               | Required | Notes                                                                  |
+| ------------------- | -------- | ---------------------------------------------------------------------- |
+| `first_name`        | yes      | trimmed                                                                |
+| `last_name`         | yes      | trimmed                                                                |
+| `email`             | yes      | valid address, at most 254 characters, unique without regard to case   |
+| `employment_status` | yes      | one of `Active`, `On Leave`, `Inactive`                                |
+| `phone`             | no       | stored as `NULL` when empty                                            |
+| `job_title`         | no       | stored as `NULL` when empty                                            |
+| `department_id`     | no       | must exist in `departments` when supplied                              |
+| `role_id`           | no       | must exist in `roles` when supplied                                    |
+| `location`          | no       | stored as `NULL` when empty                                            |
+| `avatar_url`        | no       | stored as `NULL` when empty                                            |
+| `bio`               | no       | stored as `NULL` when empty                                            |
+
+A successful request returns HTTP 201 with the created record in the same shape as
+`GET /api/staff/:id` (including the resolved department and role names). A duplicate email is
+rejected with HTTP 409; a malformed, non-numeric or non-existent `department_id` / `role_id` is
+rejected with HTTP 400, as are missing required fields, an invalid email and an unsupported
+employment status.
+
+### Managing tasks
+
+All task endpoints are administrator-only (the `admin_session` cookie is required; without it they
+answer HTTP 401). Task responses carry the task fields together with a light summary of the
+assigned staff member: `staff.id`, `staff.first_name`, `staff.last_name`, `staff.full_name`,
+`staff.email` and `staff.job_title`. They never include passwords, hashes or session tokens.
+
+`POST /api/tasks` creates and assigns a task:
+
+| Field                | Required | Notes                                                                  |
+| -------------------- | -------- | ---------------------------------------------------------------------- |
+| `title`              | yes      | trimmed, at most 200 characters                                        |
+| `description`        | no       | at most 2000 characters; stored as `NULL` when empty or omitted        |
+| `staff_id`           | yes      | a valid, existing staff member id                                      |
+| `priority`           | no       | `Low`, `Medium`, `High` or `Urgent`; defaults to `Medium`              |
+| `status`             | no       | `Pending`, `In Progress`, `Completed`, `On Hold` or `Cancelled`; defaults to `Pending` |
+| `due_date`           | no       | ISO `YYYY-MM-DD` and a real calendar date (rejects values such as `2026-02-30`) |
+
+The creator is taken from the authenticated session and stored in `created_by_admin_id`; a
+`created_by_admin_id` value in the request body is ignored. A successful request returns HTTP 201
+with the created task.
+
+`GET /api/tasks` lists tasks newest first and accepts optional `staff_id`, `status` and `priority`
+filters. Filter values are validated — an invalid or non-existent staff id, status or priority is
+rejected with HTTP 400 rather than silently ignored.
+
+`PATCH /api/tasks/:id/status` accepts a body containing only the `status` field; any other field
+is rejected with HTTP 400. `PUT /api/tasks/:id` updates `title`, `staff_id`, `priority`,
+`description` and `due_date`. Optional fields are left unchanged when omitted (an explicitly empty
+`description` or `due_date` clears it to `NULL`). `status` cannot be changed here — use the PATCH
+endpoint. `DELETE /api/tasks/:id` deletes the task only; it never touches the staff member. All
+four routes answer HTTP 404 `Task not found` for unknown tasks and HTTP 400 `Invalid task id` for
+malformed ids.
+
+`GET /api/staff/:id/tasks` lists exactly one staff member's tasks (newest first, optional `status`
+filter); an unknown staff id returns HTTP 404 `Staff member not found`, and a staff member with no
+tasks returns an empty list.
+
+### Dashboard summary
+
+`GET /api/admin/dashboard` is administrator-only (the `admin_session` cookie is required; without
+it the answer is HTTP 401 with the standard authentication error). Every number is calculated from
+the current database at request time — nothing is cached or stored — and the response carries only
+counts, task titles, staff names and dates, never passwords, hashes or session tokens.
+
+A successful response:
+
+```json
+{
+  "success": true,
+  "data": {
+    "staff": {
+      "total": 18,
+      "by_status": { "Active": 14, "On Leave": 2, "Inactive": 2 }
+    },
+    "tasks": {
+      "total": 5,
+      "by_status": {
+        "Pending": 2,
+        "In Progress": 1,
+        "Completed": 1,
+        "On Hold": 1,
+        "Cancelled": 0
+      },
+      "overdue": 1,
+      "overdue_tasks": [],
+      "recent_tasks": [],
+      "top_open_staff": []
+    }
+  }
+}
+```
+
+- `staff.total` and `staff.by_status` count all staff rows, grouped by employment status (zero
+  counts are always present).
+- `tasks.total` and `tasks.by_status` count all task rows, grouped by status (zero counts are
+  always present).
+- `tasks.overdue` counts tasks whose due date is **before today** (SQLite's UTC `date('now')`,
+  compared against the stored `YYYY-MM-DD` due date) and whose status is neither `Completed` nor
+  `Cancelled`. Tasks with no due date are never overdue.
+- `tasks.overdue_tasks` lists up to ten of those tasks, most overdue first, each with `id`,
+  `title`, `status`, `priority`, `due_date`, `staff_id` and `staff_full_name`.
+- `tasks.top_open_staff` lists up to five staff members with the most open (not Completed, not
+  Cancelled) tasks, ordered by open-task count descending.
+- `tasks.recent_tasks` lists up to five tasks ordered by most recently updated, in the same row
+  shape as `overdue_tasks`.
+
+An empty database (no staff, no tasks) returns the same shape with all totals and counts at zero
+and the three lists empty.
 
 ### Query parameters for `GET /api/staff`
 
@@ -368,7 +625,7 @@ Other examples:
 
 ## 11. Database Design
 
-The database contains three tables.
+The database contains six tables.
 
 **`departments`** — the departments staff belong to.
 
@@ -407,20 +664,65 @@ The database contains three tables.
 | `created_at`       | Timestamp, set automatically                |
 | `updated_at`       | Timestamp, set automatically                |
 
+**`admins`** — administrator accounts used by the backend authentication API.
+
+| Column          | Notes                                                        |
+| --------------- | ------------------------------------------------------------ |
+| `id`            | Primary key                                                  |
+| `username`      | Unique, required                                             |
+| `email`         | Unique, required, stored in lowercase                        |
+| `password_hash` | `crypto.scrypt` hash with a unique random salt — never a plaintext password |
+| `full_name`     | Required                                                     |
+| `created_at`    | Timestamp, set automatically                                 |
+| `updated_at`    | Timestamp, set automatically                                 |
+
+**`admin_sessions`** — one row per server-side session.
+
+| Column       | Notes                                                 |
+| ------------ | ----------------------------------------------------- |
+| `id`         | Primary key; a random 256-bit session token, not a sequential id |
+| `admin_id`   | Foreign key → `admins.id`                             |
+| `expires_at` | Expiry timestamp, 7 days after creation               |
+| `created_at` | Timestamp, set automatically                          |
+
+**`tasks`** — one row per task assigned to a staff member.
+
+| Column                | Notes                                                        |
+| --------------------- | ------------------------------------------------------------ |
+| `id`                  | Primary key                                                  |
+| `title`               | Required, at most 200 characters                             |
+| `description`         | Optional, at most 2000 characters                            |
+| `staff_id`            | Foreign key → `staff.id`, required                           |
+| `priority`            | Defaults to `Medium`; restricted to `Low`, `Medium`, `High`, `Urgent` by a `CHECK` constraint |
+| `status`              | Defaults to `Pending`; restricted to `Pending`, `In Progress`, `Completed`, `On Hold`, `Cancelled` by a `CHECK` constraint |
+| `due_date`            | Optional ISO `YYYY-MM-DD` date                               |
+| `created_by_admin_id` | Foreign key → `admins.id`, required; set from the signed-in session |
+| `created_at`          | Timestamp, set automatically                                 |
+| `updated_at`          | Timestamp, set automatically                                 |
+
+No administrator is seeded: the first account is created through `POST /api/auth/register`.
+
 ### Relationships
 
 ```text
 departments (1) ───< staff (M)
 roles (1) ───< staff (M)
+admins (1) ───< admin_sessions (M)
+staff (1) ───< tasks (M)
+admins (1) ───< tasks (M)
 ```
 
 Each staff member belongs to exactly one department and holds exactly one role, so a department
-or a role can be referenced by many staff members. These links are real foreign keys in the
-schema, declared with `ON UPDATE CASCADE` and `ON DELETE RESTRICT`, and foreign-key enforcement
-is switched on with `PRAGMA foreign_keys = ON`.
+or a role can be referenced by many staff members, and each session belongs to exactly one
+administrator. Each task is assigned to exactly one staff member and is created by exactly one
+administrator. These links are real foreign keys in the schema, declared with `ON UPDATE CASCADE`
+and `ON DELETE RESTRICT`, and foreign-key enforcement is switched on with `PRAGMA foreign_keys = ON`.
 
 Indexes are created for the fields that are filtered and searched most often:
-`department_id`, `role_id`, `employment_status` and `last_name`.
+`department_id`, `role_id`, `employment_status` and `last_name`, plus `admin_id` and `expires_at`
+on the sessions table, and `staff_id`, `status`, `created_by_admin_id` and `due_date` on the tasks
+table. Username and email uniqueness are enforced by `UNIQUE` constraints, and the allowed task
+priorities and statuses are additionally guarded by `CHECK` constraints.
 
 ---
 
@@ -459,9 +761,24 @@ The following practices are actually implemented in this project:
 - **No secrets in frontend code.** There are no API keys, tokens or credentials, and the
   frontend calls only same-origin relative paths.
 - **Fictional sample data.** No real personal information is stored or displayed.
+- **Password hashing.** Administrator passwords are stored only as `crypto.scrypt` hashes with a
+  unique random salt per password, and verified with `crypto.timingSafeEqual`. No plaintext
+  password is ever stored, logged or returned.
+- **Server-side sessions.** Sign-in state lives in a random 256-bit token held in an `HttpOnly`,
+  `SameSite=Lax` cookie (`Secure` when running in production), backed by the `admin_sessions`
+  table with a 7-day expiry. Password hashes and session identifiers never appear in API
+  responses, and login failures return one generic message so responses do not reveal whether an
+  account exists.
+- **The session token never reaches JavaScript.** Because the cookie is `HttpOnly`,
+  `document.cookie` cannot read it. The browser never writes tokens, passwords or session
+  identifiers to `localStorage`, `sessionStorage`, IndexedDB, or into a URL, and no credentials
+  appear in log messages. The only administrator data held by the frontend is the safe `admin`
+  object (id, username, email, full name), kept in memory for the current page load and
+  re-fetched from `/api/auth/me` whenever the page is loaded again.
 
-This is an educational student demonstration application. It does not include authentication,
-rate limiting or a Content Security Policy, so it is not hardened for public deployment.
+This is an educational student demonstration application. It does not include rate limiting or a
+Content Security Policy, and the staff directory itself is still publicly readable, so it is not
+hardened for public deployment.
 
 ---
 
@@ -471,15 +788,23 @@ The layout is driven entirely by Tailwind's responsive breakpoints. The behaviou
 
 - **Below 1024px** — the fixed sidebar is hidden and replaced by a compact mobile header, and the
   staff cards sit in a single column. The search box, filters and profile modal stay usable and
-  nothing overflows horizontally.
+  nothing overflows horizontally. The compact header also carries the account actions (**Sign in**
+  / **Sign up** when signed out, or the administrator's name and **Sign out** when signed in), so
+  authentication stays reachable without the sidebar.
 - **From 640px** — the grid becomes two columns, so a tablet at 768px gets the two-column staff
   grid under the mobile header.
 - **From 1024px** — the fixed left sidebar appears (staying in view while the directory scrolls)
   and the mobile header is replaced by the desktop page header.
 - **From 1280px** — the grid grows to three columns, and from 1536px to four columns.
 
-The profile modal is centered in the viewport, fits small screens, and can be dismissed with the
-close button, the backdrop, or the Escape key.
+The tasks view uses the same breakpoints: its task cards sit in a single column below 1024px and
+two columns from 1024px up, the filter dropdowns stack on small screens, and each card wraps its
+status control and buttons instead of overflowing. The dashboard uses the same system: its four
+summary cards move from one column below 640px to two columns, then four from 1280px; the
+breakdown panels and list panels sit side by side from 1024px and stack below that, with every
+link and control keeping a touch-friendly target size. The Add Staff form, the profile modal and
+the task dialogs are always centred in the viewport, fit small screens, and can be dismissed with
+the close button, the backdrop, or the Escape key.
 
 Layouts were checked during final QA at mobile (375px), tablet (768px) and desktop
 (1440px) viewport widths in a Chromium-based browser. The breakpoints are defined with
@@ -545,9 +870,12 @@ demonstrates practical work across the following areas:
 - **Frontend development** — semantic HTML, responsive layout, and vanilla JavaScript
 - **Backend development** — a Node.js and Express.js web server organised into routes,
   controllers and repositories
-- **REST API development** — seven documented endpoints with a consistent response format
-- **Relational database design** — three related tables with keys, constraints, foreign keys and
-  indexes in SQLite
+- **REST API development** — twenty documented endpoints (seven public directory endpoints,
+  four administrator authentication endpoints, an administrator-protected staff-creation
+  endpoint, seven administrator-protected task-management endpoints and one
+  administrator-protected dashboard endpoint) with a consistent response format
+- **Relational database design** — six related tables with keys, constraints, foreign keys,
+  `CHECK` constraints and indexes in SQLite
 - **Client-server communication** — the browser fetching data from the API and rendering it
   dynamically
 - **Search and filtering** — debounced search plus three combinable filters, applied in SQL
@@ -565,16 +893,19 @@ The project is a demonstration, and its current limitations are intentional:
 - **Single-file SQLite database** — one local file, not designed for multi-user or production
   scale.
 - **Fictional sample data only** — 18 invented staff records; there is no real staff data.
-- **No authentication or access control** — the directory is open to anyone who can reach the
-  server.
-- **No administrative interface** — there is no create, edit or delete functionality. The API and
-  interface are read-only.
+- **Reading the directory is still open to everyone** — the staff directory and its `GET` API
+  remain public; authentication is concentrated on the actions that change data. `POST
+  /api/staff`, all seven task endpoints and the dashboard endpoint are administrator-only and
+  answer HTTP 401 without a valid session.
+- **Staff creation only so far** — the administrative interface can add staff members, but it
+  cannot edit or delete them yet. Staff records created through the interface make the seed
+  counts differ from the original 18 until the sample data is reset.
 - **Database reset on restart** — where no persistent disk is configured, the SQLite database is
   re-created and re-seeded on every service restart or redeploy.
 
-Possible future directions (not implemented) would include authentication, an administrative
-staff-management interface, role-based permissions, a hosted database, persistent storage, and audit
-logs.
+Possible future directions (not implemented) would include an administrative interface for
+editing and deleting staff, role-based permissions, a hosted database, persistent storage, and
+audit logs.
 
 ---
 
