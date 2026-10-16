@@ -39,8 +39,10 @@ const { X509Certificate } = require('crypto');
 
 const { loadEnvFile } = require('../src/config/env');
 
-/* Load an optional project-root .env before config reads process.env. */
-loadEnvFile(path.join(__dirname, '..', '.env'));
+/* The optional project-root .env; loaded before config reads process.env. */
+const envFilePath = path.join(__dirname, '..', '.env');
+
+loadEnvFile(envFilePath);
 
 const config = require('../src/config/config');
 const db = require('../src/database/db');
@@ -561,7 +563,11 @@ function describeSslConfiguration() {
     }
   }
 
-  return 'TLS: mode=' + config.databaseSslMode + '; CA=' + ca;
+  /* Report only presence, never the value, of the .env file and the variables. */
+  const envFile = fs.existsSync(envFilePath) ? 'present' : 'missing';
+  const caEnvironment = process.env.DB_SSL_CA ? 'set' : 'unset';
+
+  return 'TLS: mode=' + config.databaseSslMode + '; .env=' + envFile + '; DB_SSL_CA=' + caEnvironment + '; CA=' + ca;
 }
 
 function reportPlan(plan, options) {
