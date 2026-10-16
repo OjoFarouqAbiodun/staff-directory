@@ -183,9 +183,10 @@ primary keys, unique constraints, foreign keys with referential actions, `CHECK`
 supporting indexes. The seed data contains 6 departments, 9 roles and 18 fictional staff records;
 no administrator account is seeded, because registration through the application creates the first
 one. The REST API combines seven public read-only directory endpoints with protected administrator
-capabilities added in later, owner-approved tasks: four authentication endpoints, a protected
-staff-creation endpoint, seven protected task-management endpoints and a protected dashboard
-endpoint — twenty endpoints in total. The user interface allows staff to be browsed as cards,
+capabilities added in later, owner-approved tasks: three public authentication endpoints
+(register/login/logout), a protected staff-creation endpoint, seven protected task-management endpoints
+and a protected dashboard endpoint — twenty endpoints in total. The authenticated principal endpoint
+(`/api/auth/me`) is guarded by the session. The user interface allows staff to be browsed as cards,
 searched by name, email or job title, filtered individually or in combination by department, role
 and employment status, and inspected through an accessible profile dialog with keyboard support and
 focus management. A signed-in administrator can additionally create staff members through an Add
@@ -1023,7 +1024,7 @@ No server hardware, GPU, dedicated storage array or network-attached storage is 
 
 | Software | Version used | Purpose |
 |---|---|---|
-| Node.js | LTS (18.x or newer recommended) | JavaScript runtime for the server |
+| Node.js | 22 or newer (verified on 24.20.0) | JavaScript runtime for the server |
 | npm | Bundled with Node.js | Dependency installation and script execution |
 
 **Back-end**
@@ -1387,8 +1388,12 @@ were found, confirming that no record refers to a missing department or role.
 The API has two kinds of routes. The **public directory routes** are unchanged from the original
 design: all seven use `GET` and are deliberately read-only, with no authentication requirement and no
 versioning prefix beyond the `/api` base path. The **protected administrator routes** (added by the
-expanded tasks) carry the actions that change data — authentication, staff creation, task management
-and the dashboard — and require a valid `admin_session` cookie.
+expanded tasks) require a valid `admin_session` cookie and carry the actions that change data (staff
+creation, task management, dashboard and the authenticated principal check). The three public
+authentication endpoints (`POST /api/auth/register`, `/api/auth/login`, `/api/auth/logout`) do not
+require a session.
+
+**Public authentication endpoints (4), protected administrator routes (10):**
 
 #### 4.5.1 Endpoint Summary
 
@@ -1404,13 +1409,18 @@ and the dashboard — and require a valid `admin_session` cookie.
 | GET | `/api/roles` | List roles, ordered by name | 200 |
 | GET | `/api/roles/:id` | One role | 200 |
 
-**Protected administrator routes (13):**
+**Public authentication endpoints (3) — no session required:**
 
 | Method | Endpoint | Purpose | Success |
 |---|---|---|---|
 | POST | `/api/auth/register` | Create an administrator account and start a session | 201 |
 | POST | `/api/auth/login` | Validate identity and start a session | 200 |
 | POST | `/api/auth/logout` | Invalidate the session and clear the cookie | 200 |
+
+**Protected administrator routes (10) — require a valid `admin_session` cookie:**
+
+| Method | Endpoint | Purpose | Success |
+|---|---|---|---|
 | GET | `/api/auth/me` | Return the signed-in principal or 401 | 200 |
 | POST | `/api/staff` | Create a staff member | 201 |
 | GET | `/api/staff/:id/tasks` | List one staff member's tasks | 200 |
@@ -1423,8 +1433,10 @@ and the dashboard — and require a valid `admin_session` cookie.
 | GET | `/api/admin/dashboard` | Dashboard summary computed from the live database | 200 |
 
 All protected routes answer **401** when the `admin_session` cookie is missing, invalid or expired
-(`{"success":false,"error":{"message":"Session is invalid or has expired"}}`), enforced by the
-`authenticate` middleware rather than repeated in each controller. Registration and login validate
+(`{"success":false,"error":{"message":"Authentication required"}}` when no cookie is present, or
+`{"success":false,"error":{"message":"Session is invalid or has expired"}}` when the session has
+expired or is invalid), enforced by the `authenticate` middleware rather than repeated in each
+controller. Registration and login validate
 input and return 400 for a malformed body; registration returns 409 for a duplicate username or
 email; staff creation returns 400/409 analogously; task routes return 400 for invalid input, 404 for
 a missing task or staff member, and 409 when a status transition is not permitted (for example
@@ -1509,7 +1521,7 @@ reserved for the few things that are awkward to express as utilities.
 
 **Desktop navigation sidebar.** A persistent left sidebar, 256px wide, shown at viewport widths of
 1024px and above. It carries the product identity, a "Directory" navigation item that is marked
-`aria-current="page"`, a "Departments" item displaying the live count of six departments, and a
+`aria-current="page"`, a "Departments" item with a static department-count label, and a
 footer identifying **Rids Cloud Digital Solution** and the "People & Operations" unit. It is sticky
 and independently scrollable, so the main content scrolls while the navigation remains visible.
 
@@ -1816,10 +1828,7 @@ contains no application logic — a single responsibility that keeps the process
 
 The order matters. Static middleware precedes the API mounts so that asset and page requests are
 served, and the not-found and error handlers are registered **last** so that they act as a fallback
-rather than intercepting valid requests. A residual `app.get('/')` route returning a plain-text
-string remains in the file from an earlier development stage; it is shadowed by the static
-middleware, which serves `index.html` at `/` first. It is harmless in the current arrangement but is
-a leftover that should be removed during future maintenance.
+rather than intercepting valid requests.
 
 #### 5.2.2 Routes
 
@@ -2427,7 +2436,7 @@ reporting tool.
 **Staff cards (Figure 01, `screenshots/01-main-directory.png`).** On load, the interface displays all
 18 staff records in the responsive grid, ordered by last name then first name. Each card shows the
 avatar, an employment-status badge, the full name, the job title, the department and role, and the
-location. The sidebar shows the live count of six departments, and the summary line reports the number
+location. The sidebar shows a static count of six departments, and the summary line reports the number
 of people shown. The observed output matched the API response for the same query, which confirmed that
 the rendering layer neither drops nor duplicates records.
 
@@ -2743,9 +2752,10 @@ sources must be supplied.
 
 ## APPENDIX A — API ENDPOINTS
 
-**Base path:** `/api` · **Content type:** `application/json` · **Public methods:** `GET` on the seven
-directory routes (unchanged read-only) · **Protected methods:** `POST`/`PATCH`/`PUT`/`DELETE` plus the
-authenticated `GET` routes below, guarded by the `admin_session` cookie
+**Base path:** `/api` · **Content type:** `application/json` · **Public:** the seven directory `GET`
+routes (unchanged read-only) and the three public authentication endpoints (`POST /api/auth/register`,
+`/api/auth/login`, `/api/auth/logout`) · **Protected:** the remaining routes, guarded by the
+`admin_session` cookie
 
 ### A.1 Success Envelope
 
@@ -2771,13 +2781,18 @@ authenticated `GET` routes below, guarded by the `admin_session` cookie
 | 6 | GET | `/api/roles` | — | 200 — array of 9 roles, ordered by name | 404, 500 |
 | 7 | GET | `/api/roles/:id` | Path `id` (positive integer) | 200 — one role | 400, 404, 500 |
 
-**Protected endpoints (8–20) — all require a valid `admin_session` cookie.**
+**Public authentication endpoints (8–10) — no session required.**
 
 | # | Method | Endpoint | Parameters | Success | Errors |
 |---|---|---|---|---|---|
 | 8 | POST | `/api/auth/register` | Body: `full_name`, `username`, `email`, `password` | 201 — `{ admin }` + cookie | 400 invalid input, 409 duplicate username/email |
 | 9 | POST | `/api/auth/login` | Body: `email`, `password` | 200 — `{ admin }` + cookie | 401 (generic "Invalid email or password"), 400 |
-| 10 | POST | `/api/auth/logout` | Cookie session | 200 — session deleted, cookie cleared | 400 |
+| 10 | POST | `/api/auth/logout` | Optional `admin_session` cookie (cleared if present) | 200 — session deleted, cookie cleared | 400 |
+
+**Protected endpoints (11–20) — all require a valid `admin_session` cookie.**
+
+| # | Method | Endpoint | Parameters | Success | Errors |
+|---|---|---|---|---|---|
 | 11 | GET | `/api/auth/me` | Cookie session | 200 — `{ admin }`, or 401 | 401 |
 | 12 | POST | `/api/staff` | Body: staff fields; `department_id`, `role_id` | 201 — created record | 401, 400, 409 duplicate email |
 | 13 | GET | `/api/staff/:id/tasks` | Path `id` | 200 — staff member's tasks | 401, 400, 404 |
@@ -2828,13 +2843,15 @@ taken from the session server-side.
 
 ### A.6 Notes
 
-* The seven public directory endpoints are **read-only and unchanged**; every write exists behind
-  `POST`/`PATCH`/`PUT`/`DELETE` or the `admin_session` cookie.
+* The seven public directory endpoints are **read-only and unchanged**. The three public
+  authentication endpoints (`POST /api/auth/register`, `/api/auth/login`, `/api/auth/logout`) require
+  no session of their own; every other write and the remaining authenticated `GET` routes require the
+  `admin_session` cookie.
 * **Authentication:** `POST /api/auth/register` creates the first administrator (no account is
   seeded). Login returns the same generic 401 whether the account is missing or the password is
   wrong. The session cookie is `HttpOnly`, `SameSite=Lax`, seven days, and `Secure` in production.
-* **Authorization:** endpoints 12–20 require a valid `admin_session` cookie; without one they return
-  401 (`Session is invalid or has expired`) before any controller logic runs.
+* **Authorization:** endpoints 11–20 require a valid `admin_session` cookie; without one they return
+  401 before any controller logic runs.
 * **No credential leakage:** administrator responses expose only `id`, `username`, `email` and
   `full_name`; no endpoint returns a password hash, salt or session token. The harness scanned every
   captured response for such material.

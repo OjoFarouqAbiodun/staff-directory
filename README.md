@@ -125,6 +125,8 @@ staff-directory/
 │           ├── dashboard.js        # Dashboard screen (summary, breakdowns, lists)
 │           └── app.js              # Startup: initial load and module wiring
 │
+├── screenshots/                    # Evidence images used by SIWES_PROJECT_REPORT.md
+│
 ├── src/                            # Backend code
 │   ├── app.js                      # Express app: static files, routes, error handling
 │   ├── config/
@@ -141,8 +143,10 @@ staff-directory/
 │   │   ├── schema.sql              # Table definitions, keys and indexes
 │   │   └── seed.js                 # Creates the schema and inserts sample data
 │   ├── middleware/
+│   │   ├── authenticate.js         # 401 guard for session-protected routes
 │   │   ├── errorHandler.js         # Central error handling
-│   │   └── notFound.js             # Handles unmatched routes
+│   │   ├── notFound.js             # Handles unmatched routes
+│   │   └── parseCookies.js         # Reads the cookie header into req.cookies
 │   ├── repositories/               # All SQL queries live here
 │   │   ├── staffRepository.js
 │   │   ├── departmentRepository.js
@@ -151,21 +155,28 @@ staff-directory/
 │   │   ├── sessionRepository.js
 │   │   ├── taskRepository.js
 │   │   └── dashboardRepository.js
-│   └── routes/
-│       ├── healthRoutes.js
-│       ├── staffRoutes.js
-│       ├── departmentRoutes.js
-│       ├── roleRoutes.js
-│       ├── authRoutes.js
-│       ├── taskRoutes.js
-│       └── dashboardRoutes.js
+│   ├── routes/
+│   │   ├── healthRoutes.js
+│   │   ├── staffRoutes.js
+│   │   ├── departmentRoutes.js
+│   │   ├── roleRoutes.js
+│   │   ├── authRoutes.js
+│   │   ├── taskRoutes.js
+│   │   └── dashboardRoutes.js
+│   ├── services/                   # Password hashing and session tokens
+│   │   ├── passwordService.js      # scrypt hashing and constant-time comparison
+│   │   └── sessionService.js       # Session create/resolve/end helpers
+│   └── utils/
+│       └── cookies.js              # Cookie parsing and Set-Cookie serialisation
 │
 ├── .gitignore
+├── FRONTEND-CORE-RULES.md          # Reusable frontend engineering standard
+├── PROJECT_SPEC.md                 # Authoritative technical specification
+├── README.md                       # This file
+├── SIWES_PROJECT_REPORT.md         # SIWES project report
 ├── package.json                    # Dependencies and npm scripts
 ├── package-lock.json               # Exact dependency versions
-├── server.js                       # Server entry point
-├── PROJECT_SPEC.md                 # Authoritative technical specification
-└── README.md                       # This file
+└── server.js                       # Server entry point
 ```
 
 **Key folders and files**
@@ -175,12 +186,14 @@ staff-directory/
   `staff-create.js`, `tasks.js`, `dashboard.js`, then `app.js`) and each has a single
   responsibility. The admin-only views (`account`, `dashboard`, `add-staff` and `tasks`) are
   gated by the router in `auth.js` and are only reached through a live administrator session.
-- **`src/`** — the backend, split into routes → controllers → repositories. Repositories are
-  the only place where SQL is written.
+- **`src/`** — the backend, split into routes → controllers → repositories, with cross-cutting
+  helpers in `middleware/`, `services/` and `utils/`. Repositories are the only place where SQL is
+  written.
 - **`data/`** — holds the SQLite database. The database file is created automatically by the
   seed script, so it is not committed. Because SQLite runs in WAL mode, you may also see
   `staff-directory.db-wal` and `staff-directory.db-shm` files beside it while the server is
   running; these are normal and can be ignored.
+- **`screenshots/`** — the evidence images referenced by `SIWES_PROJECT_REPORT.md`.
 - **`server.js`** — starts the Express application.
 - **`PROJECT_SPEC.md`** — the authoritative technical specification this project was built against.
 
@@ -190,10 +203,10 @@ staff-directory/
 
 You need:
 
-- **Node.js** (which includes **npm**)
+- **Node.js 22 or newer** (which includes **npm**)
 
-This project was developed and verified on **Node.js 24.20.0**. No minimum version is enforced
-by the project, so use a currently supported Node.js release.
+`package.json` declares `"engines": { "node": ">=22" }`. This project was developed and verified
+on **Node.js 24.20.0**, so use a currently supported Node.js release.
 
 Check your installation with:
 
@@ -385,9 +398,11 @@ filtering the directory never requires an account.
 
 ## 10. API Endpoints
 
-The backend exposes seven public read-only endpoints, four administrator authentication endpoints,
-one administrator-protected staff-creation endpoint, seven administrator-protected
-task-management endpoints and one administrator-protected dashboard endpoint:
+The backend exposes seven public read-only endpoints, three public authentication endpoints
+(`POST /api/auth/register`, `POST /api/auth/login`, `POST /api/auth/logout`), `GET /api/auth/me`
+(session-protected), one administrator-protected staff-creation endpoint, seven
+administrator-protected task-management endpoints and one administrator-protected dashboard
+endpoint:
 
 | Method | Endpoint             | Purpose               |
 | ------ | -------------------- | --------------------- |
@@ -871,7 +886,7 @@ demonstrates practical work across the following areas:
 - **Backend development** — a Node.js and Express.js web server organised into routes,
   controllers and repositories
 - **REST API development** — twenty documented endpoints (seven public directory endpoints,
-  four administrator authentication endpoints, an administrator-protected staff-creation
+  three public authentication endpoints, `GET /api/auth/me`, an administrator-protected staff-creation
   endpoint, seven administrator-protected task-management endpoints and one
   administrator-protected dashboard endpoint) with a consistent response format
 - **Relational database design** — six related tables with keys, constraints, foreign keys,

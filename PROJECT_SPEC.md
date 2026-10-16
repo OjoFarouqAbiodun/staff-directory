@@ -290,9 +290,8 @@ staff-directory/
 │   │   │   ├── staff-create.js  (REVISED — Task 3: Add Staff screen)
 │   │   │   ├── tasks.js         (REVISED — Task 5: Tasks screen)
 │   │   │   └── dashboard.js     (REVISED — Task 6: Dashboard screen)
-│   │   ├── images/
-│   │   │   └── placeholders/
-│   │   └── favicon.svg
+│   │   └── images/
+│   │       └── placeholders/
 │
 ├── src/
 │   ├── config/
