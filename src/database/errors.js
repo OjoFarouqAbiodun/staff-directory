@@ -11,6 +11,7 @@
 
 const POSTGRES_UNIQUE_VIOLATION = '23505';
 const POSTGRES_FOREIGN_KEY_VIOLATION = '23503';
+const POSTGRES_UNDEFINED_TABLE = '42P01';
 
 /*
  * better-sqlite3 reports SQLite's extended result codes, e.g.
@@ -40,7 +41,31 @@ function isUniqueConstraintError(error) {
   );
 }
 
+/*
+ * A query can fail because the relation has not been created yet, or for many
+ * other reasons (connection, TLS, authentication, permissions). Only the former
+ * is a "missing table"; treating every failure as one hides real problems. Both
+ * engines are recognised by their SQLSTATE/extended code, with a message check
+ * for errors that carry no code.
+ */
+function isMissingRelationError(error) {
+  const code = codeOf(error);
+
+  if (code === POSTGRES_UNDEFINED_TABLE) {
+    return true;
+  }
+
+  const message = error && typeof error.message === 'string' ? error.message : '';
+
+  if (code === 'SQLITE_ERROR' || code === '') {
+    return /\bno such table\b|\brelation\b.*\bdoes not exist\b/i.test(message);
+  }
+
+  return false;
+}
+
 module.exports = {
   isForeignKeyConstraintError,
-  isUniqueConstraintError
+  isUniqueConstraintError,
+  isMissingRelationError
 };

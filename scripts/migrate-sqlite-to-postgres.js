@@ -36,6 +36,7 @@
 const config = require('../src/config/config');
 const db = require('../src/database/db');
 const { redactSecrets } = require('../src/database/poolErrors');
+const { isMissingRelationError } = require('../src/database/errors');
 
 /*
  * Insertion order follows the foreign-key graph: referenced tables first.
@@ -411,6 +412,16 @@ async function verifyDestination(queryFn, plan) {
       const result = await queryFn(selectAllQuery(table));
       destinationRows = result.rows;
     } catch (error) {
+      /*
+       * Only a genuinely absent relation is reported per table. Any other
+       * failure (connection, TLS, authentication, permissions) is rethrown so
+       * the run fails with the real cause instead of claiming every table is
+       * missing.
+       */
+      if (!isMissingRelationError(error)) {
+        throw error;
+      }
+
       report.push({
         table: table.name,
         missingTable: true,

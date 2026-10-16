@@ -185,6 +185,26 @@ test('verify reports a missing destination table instead of matching by counts',
   assert.match(lines, /destination table missing/);
 });
 
+test('verify treats a PostgreSQL undefined-table code as a missing table', async () => {
+  const plan = [{ table: staffTable, rows: [{ id: 1 }] }];
+  const error = new Error('relation "staff" does not exist');
+  error.code = '42P01';
+  const query = () => Promise.reject(error);
+
+  const report = await verifyDestination(query, plan);
+
+  assert.equal(report[0].missingTable, true);
+});
+
+test('verify surfaces a connection failure instead of reporting missing tables', async () => {
+  const plan = [{ table: staffTable, rows: [{ id: 1 }] }];
+  const error = new Error('self-signed certificate in certificate chain');
+  error.code = 'SELF_SIGNED_CERT_IN_CHAIN';
+  const query = () => Promise.reject(error);
+
+  await assert.rejects(() => verifyDestination(query, plan), /self-signed certificate in certificate chain/);
+});
+
 test('the verification report prints ids, not personal data or password hashes', async () => {
   const source = [
     {

@@ -3,7 +3,7 @@ const path = require('path');
 const config = require('../config/config');
 const { normalizeParams, toPostgresQuery } = require('./params');
 const { attachPoolErrorHandler } = require('./poolErrors');
-const { buildSslOptions } = require('../config/ssl');
+const { buildSslOptions, stripSslUrlParameters } = require('../config/ssl');
 
 /*
  * One asynchronous database facade over two engines:
@@ -109,7 +109,13 @@ function getPool() {
   const { Pool } = getPg();
 
   pool = new Pool({
-    connectionString: config.databaseUrl,
+    /*
+     * node-postgres parses connectionString and merges the result over these
+     * options, so a sslmode/sslrootcert parameter in DATABASE_URL would replace
+     * the verified ssl value below (dropping the CA). Strip those parameters so
+     * DB_SSL and DB_SSL_CA stay authoritative.
+     */
+    connectionString: stripSslUrlParameters(config.databaseUrl),
     ssl: buildSslOptions(config.databaseSslMode, readSslCa()),
     statement_timeout: config.databaseStatementTimeoutMs,
     max: Number(process.env.PG_POOL_MAX) || 10,

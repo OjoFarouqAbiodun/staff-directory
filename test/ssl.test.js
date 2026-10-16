@@ -1,7 +1,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
-const { resolveSslMode, buildSslOptions } = require('../src/config/ssl');
+const { resolveSslMode, buildSslOptions, stripSslUrlParameters } = require('../src/config/ssl');
 
 test('TLS verification is selected by default for a remote database', () => {
   assert.equal(resolveSslMode({}), 'verify');
@@ -41,4 +41,31 @@ test('buildSslOptions attaches a private CA when provided', () => {
   assert.deepEqual(buildSslOptions('verify', ca), { rejectUnauthorized: true, ca });
   assert.deepEqual(buildSslOptions('no-verify', ca), { rejectUnauthorized: false, ca });
   assert.equal(buildSslOptions('disable', ca), false);
+});
+
+test('stripSslUrlParameters removes sslmode so the configured ssl is used', () => {
+  assert.equal(
+    stripSslUrlParameters('postgresql://user:pw@host:5432/db?sslmode=require'),
+    'postgresql://user:pw@host:5432/db'
+  );
+});
+
+test('stripSslUrlParameters removes every TLS parameter node-postgres would apply', () => {
+  const url =
+    'postgresql://user:pw@host:5432/db?sslmode=verify-full&sslrootcert=/tmp/ca&sslcert=/tmp/c&sslkey=/tmp/k&uselibpqcompat=true&sslnegotiation=direct';
+
+  assert.equal(stripSslUrlParameters(url), 'postgresql://user:pw@host:5432/db');
+});
+
+test('stripSslUrlParameters keeps unrelated query parameters in order', () => {
+  assert.equal(
+    stripSslUrlParameters('postgresql://user:pw@host:5432/db?sslmode=require&application_name=app&connect_timeout=10'),
+    'postgresql://user:pw@host:5432/db?application_name=app&connect_timeout=10'
+  );
+});
+
+test('stripSslUrlParameters leaves a URL without TLS parameters unchanged', () => {
+  assert.equal(stripSslUrlParameters('postgresql://user:pw@host:5432/db'), 'postgresql://user:pw@host:5432/db');
+  assert.equal(stripSslUrlParameters('postgresql://user:pw@host:5432/db?connect_timeout=10'), 'postgresql://user:pw@host:5432/db?connect_timeout=10');
+  assert.equal(stripSslUrlParameters(''), '');
 });
