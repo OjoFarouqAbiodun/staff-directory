@@ -8,6 +8,7 @@ const app = require('./src/app');
 const config = require('./src/config/config');
 const db = require('./src/database/db');
 const { seedDatabase } = require('./src/database/seed');
+const { productionRequiresPostgres } = require('./src/config/options');
 
 const PORT = Number(process.env.PORT) || 3000;
 
@@ -19,6 +20,14 @@ const PORT = Number(process.env.PORT) || 3000;
  * scripts/migrate-sqlite-to-postgres.js and is invoked once, by hand.
  */
 async function start() {
+  if (productionRequiresPostgres(process.env, config.databaseDriver)) {
+    console.error(
+      'Refusing to start: NODE_ENV=production requires DATABASE_URL. ' +
+        'Without it the server would create an ephemeral SQLite database and lose data on restart.'
+    );
+    process.exit(1);
+  }
+
   try {
     if (config.seedOnStartup) {
       const counts = await seedDatabase();

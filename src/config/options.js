@@ -29,8 +29,19 @@ function resolveSeedOnStartup(env, driver) {
   return driver === 'sqlite';
 }
 
+/*
+ * A hosted deployment (NODE_ENV=production) must use PostgreSQL. Falling back to
+ * SQLite would create a database inside the service's own filesystem, lost on
+ * every restart or redeploy, so production refuses to start without DATABASE_URL
+ * rather than silently discarding data.
+ */
+function productionRequiresPostgres(env, driver) {
+  return env.NODE_ENV === 'production' && driver !== 'postgres';
+}
+
 module.exports = {
   DEFAULT_STATEMENT_TIMEOUT_MS,
   resolveStatementTimeout,
-  resolveSeedOnStartup
+  resolveSeedOnStartup,
+  productionRequiresPostgres
 };

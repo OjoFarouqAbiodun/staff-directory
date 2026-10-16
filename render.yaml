@@ -1,0 +1,34 @@
+# Render Blueprint for the Staff Directory.
+#
+# The application is a single Node.js/Express service that serves both the
+# REST API (under /api/*) and the static frontend from the same origin, so
+# there is no separate static site and no /api rewrite route to configure.
+#
+# Secrets are never stored in this file:
+#   * DATABASE_URL is declared with `sync: false`, so Render prompts for it in
+#     the Dashboard instead of committing it.
+#   - The Supabase CA certificate is uploaded in the Render Dashboard under the
+#     service's Environment > Secret Files as a file named
+#     "supabase-root-ca.crt". Render mounts it at
+#     /etc/secrets/supabase-root-ca.crt, which is the fixed path DB_SSL_CA
+#     points at below. TLS stays fully verified (the default); DB_SSL is left
+#     unset on purpose.
+#
+# See the README "Deploying to Render (PostgreSQL/Supabase)" section for the
+# full step-by-step and the one-time data import.
+services:
+  - type: web
+    name: staff-directory
+    runtime: node
+    buildCommand: npm ci
+    startCommand: npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: NODE_VERSION
+        value: "22"
+      - key: DATABASE_URL
+        sync: false
+      - key: DB_SSL_CA
+        value: /etc/secrets/supabase-root-ca.crt

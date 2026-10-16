@@ -4,7 +4,8 @@ const assert = require('node:assert/strict');
 const {
   DEFAULT_STATEMENT_TIMEOUT_MS,
   resolveStatementTimeout,
-  resolveSeedOnStartup
+  resolveSeedOnStartup,
+  productionRequiresPostgres
 } = require('../src/config/options');
 
 test('the statement timeout has a safe default', () => {
@@ -35,4 +36,11 @@ test('an explicit SEED_ON_STARTUP overrides the default', () => {
   assert.equal(resolveSeedOnStartup({ SEED_ON_STARTUP: 'TRUE' }, 'postgres'), true);
   assert.equal(resolveSeedOnStartup({ SEED_ON_STARTUP: 'false' }, 'sqlite'), false);
   assert.equal(resolveSeedOnStartup({ SEED_ON_STARTUP: '' }, 'postgres'), false);
+});
+
+test('production refuses to start without PostgreSQL', () => {
+  assert.equal(productionRequiresPostgres({ NODE_ENV: 'production' }, 'sqlite'), true);
+  assert.equal(productionRequiresPostgres({ NODE_ENV: 'production' }, 'postgres'), false);
+  assert.equal(productionRequiresPostgres({}, 'sqlite'), false);
+  assert.equal(productionRequiresPostgres({ NODE_ENV: 'development' }, 'sqlite'), false);
 });

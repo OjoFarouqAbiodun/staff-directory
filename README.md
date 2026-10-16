@@ -71,8 +71,9 @@ The application currently provides:
   directory filtered to On Leave staff, and **Pending** opens the task list filtered to Pending)
 - **Responsive desktop / tablet / mobile interface**
 - **REST API** — the frontend reads all data from the backend over HTTP
-- **SQLite database** — six related tables (`departments`, `roles`, `staff`, `admins`,
-  `admin_sessions`, `tasks`) stored in a local SQLite file
+- **Relational database** — six related tables (`departments`, `roles`, `staff`, `admins`,
+  `admin_sessions`, `tasks`); PostgreSQL (Supabase) in production, SQLite for local development
+  and tests
 
 ---
 
@@ -87,8 +88,8 @@ Only the following technologies are used:
 | Frontend   | Vanilla JavaScript (no framework) |
 | Runtime    | Node.js                           |
 | Web server | Express.js                        |
-| Database   | SQLite                            |
-| DB driver  | better-sqlite3                    |
+| Database   | SQLite locally; PostgreSQL (Supabase) in production |
+| DB driver  | better-sqlite3 (SQLite); pg (PostgreSQL)           |
 | API style  | REST, using native browser `fetch()` |
 | Dev server | Nodemon                           |
 
@@ -103,7 +104,7 @@ the REST API.
 ```text
 staff-directory/
 ├── data/
-│   └── staff-directory.db          # SQLite database file (created by the seed script)
+│   └── staff-directory.db          # Local SQLite database (created by the seed script)
 │
 ├── public/                         # Everything the browser downloads
 │   ├── index.html                  # Page shell: sidebar, header, search, filters,
@@ -139,8 +140,9 @@ staff-directory/
 │   │   ├── taskController.js
 │   │   └── dashboardController.js
 │   ├── database/
-│   │   ├── db.js                   # Opens/creates the SQLite connection
-│   │   ├── schema.sql              # Table definitions, keys and indexes
+│   │   ├── db.js                   # Database facade (PostgreSQL or SQLite)
+│   │   ├── schema.sql              # SQLite table definitions, keys and indexes
+│   │   ├── schema.postgres.sql     # PostgreSQL table definitions, keys and indexes
 │   │   └── seed.js                 # Creates the schema and inserts sample data
 │   ├── middleware/
 │   │   ├── authenticate.js         # 401 guard for session-protected routes
@@ -169,6 +171,9 @@ staff-directory/
 │   └── utils/
 │       └── cookies.js              # Cookie parsing and Set-Cookie serialisation
 │
+├── scripts/
+│   └── migrate-sqlite-to-postgres.js  # One-time SQLite -> PostgreSQL import (see section 8)
+│
 ├── .gitignore
 ├── FRONTEND-CORE-RULES.md          # Reusable frontend engineering standard
 ├── PROJECT_SPEC.md                 # Authoritative technical specification
@@ -176,6 +181,7 @@ staff-directory/
 ├── SIWES_PROJECT_REPORT.md         # SIWES project report
 ├── package.json                    # Dependencies and npm scripts
 ├── package-lock.json               # Exact dependency versions
+├── render.yaml                     # Render deployment blueprint (see section 8)
 └── server.js                       # Server entry point
 ```
 
@@ -189,10 +195,18 @@ staff-directory/
 - **`src/`** — the backend, split into routes → controllers → repositories, with cross-cutting
   helpers in `middleware/`, `services/` and `utils/`. Repositories are the only place where SQL is
   written.
-- **`data/`** — holds the SQLite database. The database file is created automatically by the
-  seed script, so it is not committed. Because SQLite runs in WAL mode, you may also see
-  `staff-directory.db-wal` and `staff-directory.db-shm` files beside it while the server is
-  running; these are normal and can be ignored.
+- **`data/`** — holds the **local** SQLite database, created automatically by the seed script,
+  so it is not committed. It is used for local development and the test suite only; a hosted
+  deployment uses PostgreSQL instead (see section 8). Because SQLite runs in WAL mode, you may
+  also see `staff-directory.db-wal` and `staff-directory.db-shm` files beside it while the
+  server is running; these are normal and can be ignored.
+- **`scripts/`** — `migrate-sqlite-to-postgres.js`, the one-time import that copies the local
+  SQLite data into PostgreSQL. It is never run automatically.
+- **`render.yaml`** — the Render Blueprint that declares the production service, its commands,
+  and the non-secret environment variables. Secrets are added in the Render Dashboard.
+- **`certs/`** — an optional, git-ignored folder holding the Supabase CA certificate used to
+  verify the database TLS certificate locally. On Render the same file is supplied as a secret
+  file instead.
 - **`screenshots/`** — the evidence images referenced by `SIWES_PROJECT_REPORT.md`.
 - **`server.js`** — starts the Express application.
 - **`PROJECT_SPEC.md`** — the authoritative technical specification this project was built against.
@@ -229,8 +243,8 @@ From the project root:
 npm install
 ```
 
-This downloads the dependencies listed in `package.json` — `express` and `better-sqlite3` for
-running the application, and `nodemon` as a development dependency. It also regenerates
+This downloads the dependencies listed in `package.json` — `express`, `better-sqlite3` and
+`pg` for running the application, and `nodemon` as a development dependency. It also regenerates
 `node_modules/`, the folder that holds the installed packages.
 
 After this finishes, continue to section 7 to create the database.
@@ -239,7 +253,14 @@ After this finishes, continue to section 7 to create the database.
 
 ## 7. Database Setup
 
-The application uses a single SQLite file at:
+The application runs on one of two database engines, chosen automatically at startup:
+
+- **SQLite** when `DATABASE_URL` is **not** set — the default for local development and the
+  test suite. Everything below in this section applies to it.
+- **PostgreSQL** when `DATABASE_URL` **is** set — the production database (Supabase). See
+  section 8 for the hosted setup and the one-time data import.
+
+The local application uses a single SQLite file at:
 
 ```text
 data/staff-directory.db
@@ -311,22 +332,73 @@ The server listens on port 3000 by default. To use a different port, set the `PO
 environment variable, for example `PORT=4000 npm start` (PowerShell:
 `$env:PORT=4000; npm start`).
 
-### Deploying to a hosting platform
+### Deploying to Render (PostgreSQL/Supabase)
 
-The application runs as a **single Node.js/Express service** and can be deployed to a Node.js host
-such as Render. It binds to the `PORT` environment variable on `0.0.0.0`, as hosting platforms
-require.
+The application runs as a **single Node.js/Express service** that serves both the REST API
+(`/api/*`) and the static frontend from the same origin, and binds to the `PORT` variable on
+`0.0.0.0`, as hosting platforms require. There is therefore **no separate static site and no
+`/api` rewrite to configure**.
 
-**The database is initialised automatically at startup.** On start the server creates the SQLite
-database if the file is missing, applies `src/database/schema.sql`, and seeds the sample data, so a
-fresh deployment needs no manual database setup step. Seeding is idempotent, so this is safe on
-every restart and never duplicates rows.
+In production the database is **PostgreSQL hosted by Supabase**, chosen automatically because
+`DATABASE_URL` is set. Data is kept across restarts; there is **no persistent disk and no
+`DB_FILE`** on the host. If `DATABASE_URL` is missing while `NODE_ENV=production`, the server
+**refuses to start** rather than silently falling back to an ephemeral SQLite file.
 
-The optional `DB_FILE` environment variable overrides the database location and allows the database
-file to be placed on a persistent disk. Without a persistent disk, the database is created inside
-the service's own filesystem and is therefore re-initialised from scratch on every restart or
-redeploy. The sample directory data is restored by seeding, so only changes made since the restart
-(the signed-in administrators and any staff members created) would be lost.
+A `render.yaml` Blueprint is included in the repository, so connecting the repository to Render
+creates (or updates) the `staff-directory` web service with:
+
+| Setting       | Value                                  |
+| ------------- | -------------------------------------- |
+| Runtime       | Node                                   |
+| Build command | `npm ci`                               |
+| Start command | `npm start`                            |
+| Health check  | `/api/health`                          |
+| Node version  | `NODE_VERSION=22` (the app needs >=22) |
+
+#### Environment variables (Render Dashboard → service → Environment)
+
+| Variable       | Value / source                                                                 |
+| -------------- | ------------------------------------------------------------------------------ |
+| `NODE_ENV`     | `production`                                                                   |
+| `DATABASE_URL` | The Supabase **Session Pooler** connection string — a **secret**. Percent-encode reserved characters in the password. `render.yaml` marks it `sync: false`, so Render prompts for it and it is never committed. |
+| `DB_SSL_CA`    | `/etc/secrets/supabase-root-ca.crt` (the secret file below)                    |
+
+Leave `DB_SSL` unset: TLS is verified by default, and the driver ignores any TLS query parameters
+inside `DATABASE_URL`, so `DB_SSL` / `DB_SSL_CA` are the single source of truth. Do **not** set
+`DB_SSL=no-verify` or `DB_SSL=false` in production. Leave `SEED_ON_STARTUP` unset as well —
+seeding is **off by default on PostgreSQL** so a first boot cannot populate the target before the
+one-time import runs.
+
+#### Providing the CA certificate as a Render secret file
+
+Supabase presents a certificate signed by the **Supabase Root 2021 CA**. That certificate is a
+public file, but it is not committed; on Render it is supplied as a **secret file**:
+
+1. Keep the PEM locally (this project uses the git-ignored `certs/supabase-root-ca.crt`, named by
+   `DB_SSL_CA` in the local `.env`).
+2. In the Render Dashboard open the service, choose **Environment**, and under **Secret Files**
+   click **+ Add Secret File**.
+3. Name the file exactly `supabase-root-ca.crt` and paste its contents.
+4. Save. Render mounts it at `/etc/secrets/supabase-root-ca.crt`, which is what `DB_SSL_CA`
+   points at, so the database connection stays fully verified (`rejectUnauthorized: true`).
+
+#### One-time data import
+
+The tables are created automatically at startup, but the rows are not. The existing SQLite data is
+copied into PostgreSQL **once, by hand**, with `scripts/migrate-sqlite-to-postgres.js`:
+
+```bash
+npm run db:migrate:pg -- --dry-run   # report what would be copied (no connection)
+npm run db:migrate:pg -- --verify    # read-only comparison against DATABASE_URL
+npm run db:migrate:pg                # the import itself — run once
+```
+
+The importer is deliberately **safe and one-shot**: the destination must be empty (it refuses to
+run otherwise, so it can never overwrite or silently skip a row), every insert happens inside one
+transaction that rolls back on any conflict, primary-key ids and the stored password hash are
+preserved, and each identity sequence is advanced afterwards. `--include-sessions` also copies
+`admin_sessions` (skipped by default so every administrator signs in again). Credentials are never
+printed. Run `--verify`, then the import, before relying on the deployed service.
 
 ---
 
@@ -581,9 +653,9 @@ A successful response:
   counts are always present).
 - `tasks.total` and `tasks.by_status` count all task rows, grouped by status (zero counts are
   always present).
-- `tasks.overdue` counts tasks whose due date is **before today** (SQLite's UTC `date('now')`,
-  compared against the stored `YYYY-MM-DD` due date) and whose status is neither `Completed` nor
-  `Cancelled`. Tasks with no due date are never overdue.
+- `tasks.overdue` counts tasks whose due date is **before today** (the database's current UTC
+  date, compared against the stored `YYYY-MM-DD` due date) and whose status is neither `Completed`
+  nor `Cancelled`. Tasks with no due date are never overdue.
 - `tasks.overdue_tasks` lists up to ten of those tasks, most overdue first, each with `id`,
   `title`, `status`, `priority`, `due_date`, `staff_id` and `staff_full_name`.
 - `tasks.top_open_staff` lists up to five staff members with the most open (not Completed, not
@@ -872,8 +944,10 @@ It is safe to run as many times as needed — existing rows are not duplicated. 
 ### A page looks empty or shows a loading message that never finishes
 
 That normally means the server is not running. Check the terminal running the server for errors and
-confirm the server was started. The database is created and seeded automatically at startup, so
-restarting the server normally restores it; `npm run db:init` can also be run manually.
+confirm the server was started. For a **local SQLite** setup the database is created and seeded
+automatically at startup, so restarting the server normally restores it; `npm run db:init` can also
+be run manually. A **hosted deployment uses PostgreSQL**, whose data persists independently of the
+service.
 
 ---
 
@@ -890,7 +964,8 @@ demonstrates practical work across the following areas:
   endpoint, seven administrator-protected task-management endpoints and one
   administrator-protected dashboard endpoint) with a consistent response format
 - **Relational database design** — six related tables with keys, constraints, foreign keys,
-  `CHECK` constraints and indexes in SQLite
+  `CHECK` constraints and indexes, on a single SQL dialect across SQLite (local) and PostgreSQL
+  (production)
 - **Client-server communication** — the browser fetching data from the API and rendering it
   dynamically
 - **Search and filtering** — debounced search plus three combinable filters, applied in SQL
@@ -905,8 +980,9 @@ demonstrates practical work across the following areas:
 
 The project is a demonstration, and its current limitations are intentional:
 
-- **Single-file SQLite database** — one local file, not designed for multi-user or production
-  scale.
+- **SQLite locally, PostgreSQL in production** — the local development and test database is a
+  single SQLite file; a hosted deployment uses PostgreSQL (Supabase), chosen automatically when
+  `DATABASE_URL` is set.
 - **Fictional sample data only** — 18 invented staff records; there is no real staff data.
 - **Reading the directory is still open to everyone** — the staff directory and its `GET` API
   remain public; authentication is concentrated on the actions that change data. `POST
@@ -915,12 +991,12 @@ The project is a demonstration, and its current limitations are intentional:
 - **Staff creation only so far** — the administrative interface can add staff members, but it
   cannot edit or delete them yet. Staff records created through the interface make the seed
   counts differ from the original 18 until the sample data is reset.
-- **Database reset on restart** — where no persistent disk is configured, the SQLite database is
-  re-created and re-seeded on every service restart or redeploy.
+- **Local database can be reset on demand** — the local SQLite database is re-created and
+  re-seeded by the seed script; the hosted PostgreSQL database persists across restarts and
+  redeploys.
 
 Possible future directions (not implemented) would include an administrative interface for
-editing and deleting staff, role-based permissions, a hosted database, persistent storage, and
-audit logs.
+editing and deleting staff, role-based permissions, and audit logs.
 
 ---
 

@@ -62,6 +62,16 @@ staff by id, departments, departments by id, roles, roles by id), four authentic
 one protected staff-creation endpoint, seven protected task endpoints and one protected dashboard
 endpoint. The public endpoints are unchanged in method, path and response shape.
 
+**Production database (owner-approved revision).** The owner approved a **PostgreSQL** production
+database hosted on **Supabase**, while **SQLite** is kept for local development and the test suite.
+The application chooses the engine automatically: PostgreSQL when `DATABASE_URL` is set, SQLite
+otherwise, and in production (`NODE_ENV=production`) it **refuses to start** without `DATABASE_URL`
+rather than falling back to an ephemeral SQLite file. Repositories still express their SQL once
+using `@name` parameters, which the database layer rewrites to PostgreSQL's `$1..$n` form. The
+existing rows are copied across **once, by hand**, with `scripts/migrate-sqlite-to-postgres.js`
+(`--dry-run`, `--verify`, then the import). This supersedes the earlier "must not introduce
+PostgreSQL / Supabase" and "no hosted database" statements, which are marked `REVISED` in place.
+
 ---
 
 # 1. PROJECT OBJECTIVE
@@ -108,8 +118,9 @@ Use ONLY this stack unless there is a genuine technical necessity:
 
 ### Database
 
-* SQLite
-* `better-sqlite3`
+* SQLite + `better-sqlite3` — local development and the test suite
+* PostgreSQL (`pg`) — production, hosted on Supabase
+  (**`REVISED`** — see the note at the end of section 0)
 
 ### Communication
 
@@ -134,10 +145,12 @@ Do NOT introduce:
 * Prisma
 * Sequelize
 * MongoDB
-* PostgreSQL
+* ~~PostgreSQL~~ — **`REVISED`**: the owner approved PostgreSQL as the production database,
+  hosted on Supabase (see the note at the end of section 0). SQLite remains the local/test engine.
 * MySQL
 * Firebase
-* Supabase
+* ~~Supabase~~ — **`REVISED`**: approved as the managed host for the production PostgreSQL
+  database (see the note at the end of section 0).
 * Redux
 * Axios
 * ~~Authentication systems~~ — **`REVISED`**: the owner approved administrator authentication
@@ -944,7 +957,7 @@ The server should:
 
 * Serve the frontend
 * Expose the REST API
-* Connect to SQLite
+* Connect to SQLite locally, or to PostgreSQL when `DATABASE_URL` is set (**`REVISED`**)
 * Handle unknown routes
 * Handle application errors
 * Start on port 3000 by default

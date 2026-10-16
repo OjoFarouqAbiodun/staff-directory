@@ -14,6 +14,9 @@ data/*.db
 data/*.db-shm
 data/*.db-wal
 
+# Local CA certificates (supplied to hosting as secret files, never committed)
+certs/
+
 # OS
 .DS_Store
 Thumbs.db
