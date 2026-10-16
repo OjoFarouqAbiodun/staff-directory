@@ -1,4 +1,5 @@
-const { getDatabase } = require('../database/db');
+const db = require('../database/db');
+const dialect = require('../database/dialect');
 
 /*
  * The tasks listing always joins the assigned staff member so that every
@@ -78,30 +79,26 @@ function buildWhereClause(filters) {
   };
 }
 
-function findAll(filters) {
-  const db = getDatabase();
+async function findAll(filters) {
   const { where, params } = buildWhereClause(filters || {});
+  const result = await db.query(BASE_SELECT + ' ' + where + ' ' + DEFAULT_ORDER, params);
 
-  const rows = db.prepare(BASE_SELECT + ' ' + where + ' ' + DEFAULT_ORDER).all(params);
-
-  return rows.map(mapRow);
+  return result.rows.map(mapRow);
 }
 
-function findById(id) {
-  const db = getDatabase();
+async function findById(id) {
   const numericId = Number(id);
 
   if (!Number.isInteger(numericId) || numericId < 1) {
     return null;
   }
 
-  const row = db.prepare(BASE_SELECT + ' WHERE t.id = @id').get({ id: numericId });
+  const result = await db.query(BASE_SELECT + ' WHERE t.id = @id', { id: numericId });
 
-  return mapRow(row);
+  return mapRow(result.rows[0]);
 }
 
-function findByStaffId(staffId, status) {
-  const db = getDatabase();
+async function findByStaffId(staffId, status) {
   const params = { staff_id: staffId };
   let where = 'WHERE t.staff_id = @staff_id';
 
@@ -110,9 +107,9 @@ function findByStaffId(staffId, status) {
     params.status = status;
   }
 
-  const rows = db.prepare(BASE_SELECT + ' ' + where + ' ' + DEFAULT_ORDER).all(params);
+  const result = await db.query(BASE_SELECT + ' ' + where + ' ' + DEFAULT_ORDER, params);
 
-  return rows.map(mapRow);
+  return result.rows.map(mapRow);
 }
 
 const INSERT_TASK = `
@@ -136,10 +133,8 @@ const INSERT_TASK = `
   )
 `;
 
-function create(input) {
-  const db = getDatabase();
-
-  const info = db.prepare(INSERT_TASK).run({
+async function create(input) {
+  const result = await db.query(INSERT_TASK + ' RETURNING id', {
     title: input.title,
     description: input.description,
     staff_id: input.staffId,
@@ -149,22 +144,19 @@ function create(input) {
     created_by_admin_id: input.createdByAdminId
   });
 
-  return Number(info.lastInsertRowid);
+  return result.rows[0].id;
 }
 
-function updateStatus(id, status) {
-  const db = getDatabase();
+async function updateStatus(id, status) {
+  const result = await db.query(
+    'UPDATE tasks SET status = @status, updated_at = ' + dialect.now + ' WHERE id = @id RETURNING id',
+    { id: Number(id), status }
+  );
 
-  const info = db
-    .prepare("UPDATE tasks SET status = @status, updated_at = datetime('now') WHERE id = @id")
-    .run({ id: Number(id), status });
-
-  return Number(info.changes);
+  return result.rowCount;
 }
 
-function update(id, input) {
-  const db = getDatabase();
-
+async function update(id, input) {
   const sets = [];
   const params = { id: Number(id) };
 
@@ -188,21 +180,22 @@ function update(id, input) {
     setColumn('due_date', input.dueDate);
   }
 
-  sets.push("updated_at = datetime('now')");
+  sets.push('updated_at = ' + dialect.now);
 
-  const info = db
-    .prepare('UPDATE tasks SET ' + sets.join(', ') + ' WHERE id = @id')
-    .run(params);
+  const result = await db.query(
+    'UPDATE tasks SET ' + sets.join(', ') + ' WHERE id = @id RETURNING id',
+    params
+  );
 
-  return Number(info.changes);
+  return result.rowCount;
 }
 
-function remove(id) {
-  const db = getDatabase();
+async function remove(id) {
+  const result = await db.query('DELETE FROM tasks WHERE id = @id RETURNING id', {
+    id: Number(id)
+  });
 
-  const info = db.prepare('DELETE FROM tasks WHERE id = @id').run({ id: Number(id) });
-
-  return Number(info.changes);
+  return result.rowCount;
 }
 
 module.exports = {

@@ -1,4 +1,5 @@
-const { getDatabase } = require('../database/db');
+const db = require('../database/db');
+const dialect = require('../database/dialect');
 
 const SELECT_COLUMNS = `
   SELECT
@@ -16,16 +17,11 @@ const SELECT_CREDENTIALS = `
     id,
     username,
     email,
-    full_name,
     password_hash,
+    full_name,
     created_at,
     updated_at
   FROM admins
-`;
-
-const INSERT_ADMIN = `
-  INSERT INTO admins (username, email, password_hash, full_name)
-  VALUES (@username, @email, @password_hash, @full_name)
 `;
 
 function mapRow(row) {
@@ -48,57 +44,75 @@ function mapCredentials(row) {
     return null;
   }
 
-  return Object.assign(mapRow(row), { password_hash: row.password_hash });
+  return {
+    id: row.id,
+    username: row.username,
+    email: row.email,
+    full_name: row.full_name,
+    password_hash: row.password_hash,
+    created_at: row.created_at,
+    updated_at: row.updated_at
+  };
 }
 
-function findById(id) {
-  const db = getDatabase();
+async function findById(id) {
   const numericId = Number(id);
 
   if (!Number.isInteger(numericId) || numericId < 1) {
     return null;
   }
 
-  const row = db.prepare(SELECT_COLUMNS + ' WHERE id = @id').get({ id: numericId });
+  const result = await db.query(SELECT_COLUMNS + ' WHERE id = @id', { id: numericId });
 
-  return mapRow(row);
+  return mapRow(result.rows[0]);
 }
 
-function emailExists(email) {
-  const db = getDatabase();
-  const row = db.prepare('SELECT id FROM admins WHERE email = @email').get({ email });
+async function emailExists(email) {
+  const result = await db.query('SELECT id FROM admins WHERE email = @email', { email });
 
-  return Boolean(row);
+  return result.rows.length > 0;
 }
 
 // Usernames are compared without case so that "Admin" and "admin" are
 // rejected as the same account rather than creating two look-alike accounts.
-function usernameExists(username) {
-  const db = getDatabase();
-  const row = db
-    .prepare('SELECT id FROM admins WHERE username = @username COLLATE NOCASE')
-    .get({ username });
+async function usernameExists(username) {
+  const result = await db.query(
+    'SELECT id FROM admins WHERE ' + dialect.caseInsensitiveEquals('username', '@username'),
+    { username }
+  );
 
-  return Boolean(row);
+  return result.rows.length > 0;
 }
 
-function findCredentialsByEmail(email) {
-  const db = getDatabase();
-  const row = db.prepare(SELECT_CREDENTIALS + ' WHERE email = @email').get({ email });
+async function findCredentialsByEmail(email) {
+  const result = await db.query(SELECT_CREDENTIALS + ' WHERE email = @email', { email });
 
-  return mapCredentials(row);
+  return mapCredentials(result.rows[0]);
 }
 
-function create(admin) {
-  const db = getDatabase();
-  const info = db.prepare(INSERT_ADMIN).run({
+const INSERT_ADMIN = `
+  INSERT INTO admins (
+    username,
+    email,
+    password_hash,
+    full_name
+  ) VALUES (
+    @username,
+    @email,
+    @password_hash,
+    @full_name
+  )
+`;
+
+async function create(admin) {
+  const result = await db.query(INSERT_ADMIN + ' RETURNING id', {
     username: admin.username,
     email: admin.email,
     password_hash: admin.passwordHash,
     full_name: admin.fullName
   });
 
-  return Number(info.lastInsertRowid);
+  return result.rows[0].id;
 }
 
 module.exports = {

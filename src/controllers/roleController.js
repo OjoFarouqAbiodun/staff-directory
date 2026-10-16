@@ -16,16 +16,16 @@ function sendError(res, status, message) {
   });
 }
 
-function getRoles(req, res) {
+async function getRoles(req, res) {
   try {
-    sendSuccess(res, roleRepository.findAll());
+    sendSuccess(res, await roleRepository.findAll());
   } catch (error) {
     console.error('Failed to load roles:', error.message);
     sendError(res, 500, 'Unable to load roles');
   }
 }
 
-function getRoleById(req, res) {
+async function getRoleById(req, res) {
   const { id } = req.params;
 
   if (!/^\d+$/.test(id)) {
@@ -34,7 +34,7 @@ function getRoleById(req, res) {
   }
 
   try {
-    const role = roleRepository.findById(id);
+    const role = await roleRepository.findById(id);
 
     if (!role) {
       sendError(res, 404, 'Role not found');

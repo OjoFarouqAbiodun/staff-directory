@@ -1,4 +1,5 @@
-const { getDatabase } = require('../database/db');
+const db = require('../database/db');
+const dialect = require('../database/dialect');
 
 const SELECT_COLUMNS = `
   SELECT
@@ -7,11 +8,6 @@ const SELECT_COLUMNS = `
     expires_at,
     created_at
   FROM admin_sessions
-`;
-
-const INSERT_SESSION = `
-  INSERT INTO admin_sessions (id, admin_id, expires_at)
-  VALUES (@id, @admin_id, datetime('now', @modifier))
 `;
 
 function mapRow(row) {
@@ -27,40 +23,44 @@ function mapRow(row) {
   };
 }
 
-function create(sessionId, adminId, lifetimeDays) {
-  const db = getDatabase();
-
-  db.prepare(INSERT_SESSION).run({
-    id: sessionId,
-    admin_id: adminId,
-    modifier: '+' + lifetimeDays + ' days'
-  });
+async function create(sessionId, adminId, lifetimeDays) {
+  await db.query(
+    'INSERT INTO admin_sessions (id, admin_id, expires_at) VALUES (@id, @admin_id, ' +
+      dialect.sessionExpiry +
+      ')',
+    {
+      id: sessionId,
+      admin_id: adminId,
+      lifetime_days: lifetimeDays
+    }
+  );
 
   return sessionId;
 }
 
-function findActive(sessionId) {
+async function findActive(sessionId) {
   if (typeof sessionId !== 'string' || !sessionId) {
     return null;
   }
 
-  const db = getDatabase();
-  const row = db
-    .prepare(SELECT_COLUMNS + ' WHERE id = @id AND expires_at > datetime(\'now\')')
-    .get({ id: sessionId });
+  const result = await db.query(
+    SELECT_COLUMNS + ' WHERE id = @id AND expires_at > ' + dialect.now,
+    { id: sessionId }
+  );
 
-  return mapRow(row);
+  return mapRow(result.rows[0]);
 }
 
-function remove(sessionId) {
+async function remove(sessionId) {
   if (typeof sessionId !== 'string' || !sessionId) {
     return 0;
   }
 
-  const db = getDatabase();
-  const info = db.prepare('DELETE FROM admin_sessions WHERE id = @id').run({ id: sessionId });
+  const result = await db.query('DELETE FROM admin_sessions WHERE id = @id RETURNING id', {
+    id: sessionId
+  });
 
-  return info.changes;
+  return result.rowCount;
 }
 
 module.exports = {

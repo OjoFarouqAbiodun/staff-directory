@@ -1,6 +1,6 @@
 const sessionService = require('../services/sessionService');
 
-function authenticate(req, res, next) {
+async function authenticate(req, res, next) {
   const sessionId = sessionService.getSessionId(req);
 
   if (!sessionId) {
@@ -13,21 +13,25 @@ function authenticate(req, res, next) {
     return;
   }
 
-  const admin = sessionService.resolveSession(sessionId);
+  try {
+    const admin = await sessionService.resolveSession(sessionId);
 
-  if (!admin) {
-    res.status(401).json({
-      success: false,
-      error: {
-        message: 'Session is invalid or has expired'
-      }
-    });
-    return;
+    if (!admin) {
+      res.status(401).json({
+        success: false,
+        error: {
+          message: 'Session is invalid or has expired'
+        }
+      });
+      return;
+    }
+
+    req.admin = admin;
+
+    next();
+  } catch (error) {
+    next(error);
   }
-
-  req.admin = admin;
-
-  next();
 }
 
 module.exports = authenticate;

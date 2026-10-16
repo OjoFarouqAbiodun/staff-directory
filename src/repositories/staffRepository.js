@@ -1,4 +1,5 @@
-const { getDatabase } = require('../database/db');
+const db = require('../database/db');
+const dialect = require('../database/dialect');
 
 const BASE_SELECT = `
   SELECT
@@ -40,27 +41,27 @@ function buildSearchClause(term, params) {
   params.search = '%' + escapeLikeTerm(term) + '%';
 
   return `(
-      s.first_name LIKE @search ESCAPE '\\'
-      OR s.last_name LIKE @search ESCAPE '\\'
-      OR (s.first_name || ' ' || s.last_name) LIKE @search ESCAPE '\\'
-      OR s.email LIKE @search ESCAPE '\\'
-      OR s.job_title LIKE @search ESCAPE '\\'
+      ${dialect.caseInsensitiveLike('s.first_name', '@search')}
+      OR ${dialect.caseInsensitiveLike('s.last_name', '@search')}
+      OR ${dialect.caseInsensitiveLike("(s.first_name || ' ' || s.last_name)", '@search')}
+      OR ${dialect.caseInsensitiveLike('s.email', '@search')}
+      OR ${dialect.caseInsensitiveLike('s.job_title', '@search')}
     )`;
 }
 
 function buildDepartmentClause(value, params) {
   params.department = value;
-  return 'd.name = @department COLLATE NOCASE';
+  return dialect.caseInsensitiveEquals('d.name', '@department');
 }
 
 function buildRoleClause(value, params) {
   params.role = value;
-  return 'r.name = @role COLLATE NOCASE';
+  return dialect.caseInsensitiveEquals('r.name', '@role');
 }
 
 function buildStatusClause(value, params) {
   params.status = value;
-  return 's.employment_status = @status COLLATE NOCASE';
+  return dialect.caseInsensitiveEquals('s.employment_status', '@status');
 }
 
 function buildWhereClause(filters) {
@@ -119,26 +120,23 @@ function mapRow(row) {
   };
 }
 
-function findAll(filters) {
-  const db = getDatabase();
+async function findAll(filters) {
   const { where, params } = buildWhereClause(filters || {});
+  const result = await db.query(BASE_SELECT + ' ' + where + ' ' + DEFAULT_ORDER, params);
 
-  const rows = db.prepare(BASE_SELECT + ' ' + where + ' ' + DEFAULT_ORDER).all(params);
-
-  return rows.map(mapRow);
+  return result.rows.map(mapRow);
 }
 
-function findById(id) {
-  const db = getDatabase();
+async function findById(id) {
   const numericId = Number(id);
 
   if (!Number.isInteger(numericId) || numericId < 1) {
     return null;
   }
 
-  const row = db.prepare(BASE_SELECT + ' WHERE s.id = @id').get({ id: numericId });
+  const result = await db.query(BASE_SELECT + ' WHERE s.id = @id', { id: numericId });
 
-  return mapRow(row);
+  return mapRow(result.rows[0]);
 }
 
 const INSERT_STAFF = `
@@ -168,6 +166,7 @@ const INSERT_STAFF = `
     @bio,
     @employment_status
   )
+  RETURNING id
 `;
 
 /*
@@ -175,20 +174,17 @@ const INSERT_STAFF = `
  * directory treats an address as the person's identity. Comparing without
  * regard to case keeps two look-alike addresses from becoming two people.
  */
-function emailExists(email) {
-  const db = getDatabase();
+async function emailExists(email) {
+  const result = await db.query(
+    'SELECT id FROM staff WHERE ' + dialect.caseInsensitiveEquals('email', '@email'),
+    { email: String(email) }
+  );
 
-  const row = db.prepare('SELECT id FROM staff WHERE email = @email COLLATE NOCASE').get({
-    email: String(email)
-  });
-
-  return Boolean(row);
+  return result.rows.length > 0;
 }
 
-function create(input) {
-  const db = getDatabase();
-
-  const info = db.prepare(INSERT_STAFF).run({
+async function create(input) {
+  const result = await db.query(INSERT_STAFF, {
     first_name: input.firstName,
     last_name: input.lastName,
     email: input.email,
@@ -202,23 +198,21 @@ function create(input) {
     employment_status: input.employmentStatus
   });
 
-  return Number(info.lastInsertRowid);
+  return result.rows[0].id;
 }
 
-function countAll(filters) {
-  const db = getDatabase();
+async function countAll(filters) {
   const { where, params } = buildWhereClause(filters || {});
 
-  const row = db
-    .prepare(
-      'SELECT COUNT(*) AS total FROM staff s ' +
-        'LEFT JOIN departments d ON s.department_id = d.id ' +
-        'LEFT JOIN roles r ON s.role_id = r.id ' +
-        where
-    )
-    .get(params);
+  const result = await db.query(
+    `SELECT ${dialect.count('*')} AS total FROM staff s ` +
+      'LEFT JOIN departments d ON s.department_id = d.id ' +
+      'LEFT JOIN roles r ON s.role_id = r.id ' +
+      where,
+    params
+  );
 
-  return row.total;
+  return result.rows[0].total;
 }
 
 module.exports = {

@@ -1,5 +1,6 @@
 const staffRepository = require('../repositories/staffRepository');
 const taskRepository = require('../repositories/taskRepository');
+const { isForeignKeyConstraintError } = require('../database/errors');
 
 const ALLOWED_PRIORITIES = ['Low', 'Medium', 'High', 'Urgent'];
 const ALLOWED_STATUSES = ['Pending', 'In Progress', 'Completed', 'On Hold', 'Cancelled'];
@@ -44,10 +45,6 @@ function readFilter(query, key) {
   return value.trim();
 }
 
-/*
- * "Missing" (not supplied) is separate from "supplied but unusable": the
- * staff_id field is required, so only a well-formed positive integer is valid.
- */
 function readId(value) {
   if (value === undefined || value === null || value === '') {
     return { supplied: false, valid: false, value: null };
@@ -91,18 +88,14 @@ function isValidDateString(value) {
   );
 }
 
-function isForeignKeyConstraintError(error) {
-  return Boolean(error && error.code === 'SQLITE_CONSTRAINT_FOREIGNKEY');
-}
-
-function getTasks(req, res) {
+async function getTasks(req, res) {
   try {
     const filters = {};
 
     const staffId = readFilter(req.query, 'staff_id');
     if (staffId) {
       const parsed = readId(staffId);
-      if (!parsed.valid || !staffRepository.findById(parsed.value)) {
+      if (!parsed.valid || !(await staffRepository.findById(parsed.value))) {
         sendError(res, 400, 'Select a valid staff member');
         return;
       }
@@ -127,14 +120,14 @@ function getTasks(req, res) {
       filters.priority = priority;
     }
 
-    sendSuccess(res, taskRepository.findAll(filters));
+    sendSuccess(res, await taskRepository.findAll(filters));
   } catch (error) {
     console.error('Failed to load tasks:', error.message);
     sendError(res, 500, 'Unable to load tasks');
   }
 }
 
-function getTaskById(req, res) {
+async function getTaskById(req, res) {
   const { id } = req.params;
 
   if (!/^\d+$/.test(id)) {
@@ -143,7 +136,7 @@ function getTaskById(req, res) {
   }
 
   try {
-    const task = taskRepository.findById(id);
+    const task = await taskRepository.findById(id);
 
     if (!task) {
       sendError(res, 404, 'Task not found');
@@ -206,7 +199,7 @@ function validateTaskInput(input) {
   return null;
 }
 
-function createTask(req, res) {
+async function createTask(req, res) {
   const input = readTaskInput(req);
   const validationError = validateTaskInput(input);
 
@@ -216,7 +209,7 @@ function createTask(req, res) {
   }
 
   try {
-    if (!staffRepository.findById(input.staffId.value)) {
+    if (!(await staffRepository.findById(input.staffId.value))) {
       sendError(res, 400, 'Select a valid staff member');
       return;
     }
@@ -225,7 +218,7 @@ function createTask(req, res) {
 
     try {
       /* The creator is the authenticated administrator; the body is ignored. */
-      taskId = taskRepository.create({
+      taskId = await taskRepository.create({
         title: input.title,
         description: input.description,
         staffId: input.staffId.value,
@@ -243,7 +236,7 @@ function createTask(req, res) {
       throw error;
     }
 
-    const task = taskRepository.findById(taskId);
+    const task = await taskRepository.findById(taskId);
 
     if (!task) {
       sendError(res, 500, 'Unable to create task');
@@ -257,7 +250,7 @@ function createTask(req, res) {
   }
 }
 
-function updateTaskStatus(req, res) {
+async function updateTaskStatus(req, res) {
   const { id } = req.params;
 
   if (!/^\d+$/.test(id)) {
@@ -282,16 +275,16 @@ function updateTaskStatus(req, res) {
   }
 
   try {
-    const task = taskRepository.findById(id);
+    const task = await taskRepository.findById(id);
 
     if (!task) {
       sendError(res, 404, 'Task not found');
       return;
     }
 
-    taskRepository.updateStatus(id, status);
+    await taskRepository.updateStatus(id, status);
 
-    sendSuccess(res, taskRepository.findById(id));
+    sendSuccess(res, await taskRepository.findById(id));
   } catch (error) {
     console.error('Failed to update task status:', error.message);
     sendError(res, 500, 'Unable to update task status');
@@ -370,7 +363,7 @@ function validatePutTaskInput(input) {
   return null;
 }
 
-function updateTask(req, res) {
+async function updateTask(req, res) {
   const { id } = req.params;
 
   if (!/^\d+$/.test(id)) {
@@ -387,17 +380,17 @@ function updateTask(req, res) {
   }
 
   try {
-    if (!taskRepository.findById(id)) {
+    if (!(await taskRepository.findById(id))) {
       sendError(res, 404, 'Task not found');
       return;
     }
 
-    if (!staffRepository.findById(input.staffId.value)) {
+    if (!(await staffRepository.findById(input.staffId.value))) {
       sendError(res, 400, 'Select a valid staff member');
       return;
     }
 
-    taskRepository.update(id, {
+    await taskRepository.update(id, {
       title: input.title,
       staffId: input.staffId.value,
       priority: input.priority,
@@ -405,14 +398,14 @@ function updateTask(req, res) {
       dueDate: input.dueDate
     });
 
-    sendSuccess(res, taskRepository.findById(id));
+    sendSuccess(res, await taskRepository.findById(id));
   } catch (error) {
     console.error('Failed to update task:', error.message);
     sendError(res, 500, 'Unable to update task');
   }
 }
 
-function deleteTask(req, res) {
+async function deleteTask(req, res) {
   const { id } = req.params;
 
   if (!/^\d+$/.test(id)) {
@@ -421,7 +414,7 @@ function deleteTask(req, res) {
   }
 
   try {
-    const changes = taskRepository.remove(id);
+    const changes = await taskRepository.remove(id);
 
     if (!changes) {
       sendError(res, 404, 'Task not found');
@@ -435,7 +428,7 @@ function deleteTask(req, res) {
   }
 }
 
-function getStaffTasks(req, res) {
+async function getStaffTasks(req, res) {
   const { id } = req.params;
 
   if (!/^\d+$/.test(id)) {
@@ -444,7 +437,7 @@ function getStaffTasks(req, res) {
   }
 
   try {
-    const staff = staffRepository.findById(id);
+    const staff = await staffRepository.findById(id);
 
     if (!staff) {
       sendError(res, 404, 'Staff member not found');
@@ -458,7 +451,7 @@ function getStaffTasks(req, res) {
       return;
     }
 
-    sendSuccess(res, taskRepository.findByStaffId(id, status || undefined));
+    sendSuccess(res, await taskRepository.findByStaffId(id, status || undefined));
   } catch (error) {
     console.error('Failed to load staff tasks:', error.message);
     sendError(res, 500, 'Unable to load staff tasks');

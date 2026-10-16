@@ -1,4 +1,4 @@
-const { getDatabase } = require('../database/db');
+const db = require('../database/db');
 
 const SELECT_COLUMNS = `
   SELECT
@@ -24,24 +24,22 @@ function mapRow(row) {
   };
 }
 
-function findAll() {
-  const db = getDatabase();
-  const rows = db.prepare(SELECT_COLUMNS + ' ' + DEFAULT_ORDER).all();
+async function findAll() {
+  const result = await db.query(SELECT_COLUMNS + ' ' + DEFAULT_ORDER);
 
-  return rows.map(mapRow);
+  return result.rows.map(mapRow);
 }
 
-function findById(id) {
-  const db = getDatabase();
+async function findById(id) {
   const numericId = Number(id);
 
   if (!Number.isInteger(numericId) || numericId < 1) {
     return null;
   }
 
-  const row = db.prepare(SELECT_COLUMNS + ' WHERE id = @id').get({ id: numericId });
+  const result = await db.query(SELECT_COLUMNS + ' WHERE id = @id', { id: numericId });
 
-  return mapRow(row);
+  return mapRow(result.rows[0]);
 }
 
 module.exports = {

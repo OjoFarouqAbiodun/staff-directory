@@ -1,4 +1,5 @@
-const { getDatabase } = require('../database/db');
+const db = require('../database/db');
+const dialect = require('../database/dialect');
 
 /*
  * The dashboard endpoint calculates every count at request time from the
@@ -25,10 +26,9 @@ function countByGroup(rows) {
   }, {});
 }
 
-function getStaffSummary() {
-  const db = getDatabase();
-
-  const total = db.prepare('SELECT COUNT(*) AS count FROM staff').get().count;
+async function getStaffSummary() {
+  const totalResult = await db.query(`SELECT ${dialect.count('*')} AS count FROM staff`);
+  const total = totalResult.rows[0].count;
 
   /*
    * Seed with the known statuses first (a status with zero members must read
@@ -39,46 +39,44 @@ function getStaffSummary() {
     return acc;
   }, {});
 
-  const rows = db
-    .prepare(
-      'SELECT employment_status AS status, COUNT(*) AS count FROM staff GROUP BY employment_status'
-    )
-    .all();
+  const result = await db.query(
+    `SELECT employment_status AS status, ${dialect.count('*')} AS count ` +
+      'FROM staff GROUP BY employment_status'
+  );
 
-  Object.assign(counts, countByGroup(rows));
+  Object.assign(counts, countByGroup(result.rows));
 
   return { total, by_status: counts };
 }
 
-function getTaskSummary() {
-  const db = getDatabase();
-
-  const total = db.prepare('SELECT COUNT(*) AS count FROM tasks').get().count;
+async function getTaskSummary() {
+  const totalResult = await db.query(`SELECT ${dialect.count('*')} AS count FROM tasks`);
+  const total = totalResult.rows[0].count;
 
   const counts = TASK_STATUS_ORDER.reduce((acc, status) => {
     acc[status] = 0;
     return acc;
   }, {});
 
-  const rows = db.prepare('SELECT status, COUNT(*) AS count FROM tasks GROUP BY status').all();
+  const grouped = await db.query(
+    `SELECT status, ${dialect.count('*')} AS count FROM tasks GROUP BY status`
+  );
 
-  Object.assign(counts, countByGroup(rows));
+  Object.assign(counts, countByGroup(grouped.rows));
 
   /*
-   * Overdue means the due date is before today (SQLite's UTC date, matching
-   * the stored YYYY-MM-DD format lexically) and the task is still open.
+   * Overdue means the due date is before today (the UTC date, matching the
+   * stored YYYY-MM-DD format) and the task is still open.
    */
-  const overdue = db
-    .prepare(
-      `SELECT COUNT(*) AS count
-         FROM tasks
-        WHERE due_date IS NOT NULL
-          AND due_date < date('now')
-          AND status NOT IN ('Completed', 'Cancelled')`
-    )
-    .get().count;
+  const overdueResult = await db.query(
+    `SELECT ${dialect.count('*')} AS count
+       FROM tasks
+      WHERE due_date IS NOT NULL
+        AND due_date < ${dialect.currentDate}
+        AND status NOT IN ('Completed', 'Cancelled')`
+  );
 
-  return { total, by_status: counts, overdue };
+  return { total, by_status: counts, overdue: overdueResult.rows[0].count };
 }
 
 const TASK_LIST_SELECT = `
@@ -112,58 +110,46 @@ function mapTaskRow(row) {
 }
 
 /* The most overdue first, newest first when several tasks share a date. */
-function getOverdueTasks() {
-  const db = getDatabase();
+async function getOverdueTasks() {
+  const result = await db.query(
+    `${TASK_LIST_SELECT}
+      WHERE t.due_date IS NOT NULL
+        AND t.due_date < ${dialect.currentDate}
+        AND t.status NOT IN ('Completed', 'Cancelled')
+      ORDER BY t.due_date ASC, t.id DESC
+      LIMIT 10`
+  );
 
-  const rows = db
-    .prepare(
-      `${TASK_LIST_SELECT}
-        WHERE t.due_date IS NOT NULL
-          AND t.due_date < date('now')
-          AND t.status NOT IN ('Completed', 'Cancelled')
-       ORDER BY t.due_date ASC, t.id DESC
-       LIMIT 10`
-    )
-    .all();
-
-  return rows.map(mapTaskRow).filter(Boolean);
+  return result.rows.map(mapTaskRow).filter(Boolean);
 }
 
 /* The most recently updated first — the owner sees what changed last. */
-function getRecentTasks() {
-  const db = getDatabase();
+async function getRecentTasks() {
+  const result = await db.query(
+    `${TASK_LIST_SELECT}
+     ORDER BY t.updated_at DESC, t.id DESC
+     LIMIT 5`
+  );
 
-  const rows = db
-    .prepare(
-      `${TASK_LIST_SELECT}
-       ORDER BY t.updated_at DESC, t.id DESC
-       LIMIT 5`
-    )
-    .all();
-
-  return rows.map(mapTaskRow).filter(Boolean);
+  return result.rows.map(mapTaskRow).filter(Boolean);
 }
 
-function getTopOpenStaff() {
-  const db = getDatabase();
+async function getTopOpenStaff() {
+  const result = await db.query(
+    `SELECT
+       s.id AS staff_id,
+       s.first_name,
+       s.last_name,
+       ${dialect.count('t.id')} AS open_tasks
+     FROM staff s
+     JOIN tasks t ON t.staff_id = s.id
+         AND t.status NOT IN ('Completed', 'Cancelled')
+     GROUP BY s.id, s.first_name, s.last_name
+     ORDER BY open_tasks DESC, s.last_name ASC, s.first_name ASC
+     LIMIT 5`
+  );
 
-  const rows = db
-    .prepare(
-      `SELECT
-         s.id AS staff_id,
-         s.first_name,
-         s.last_name,
-         COUNT(t.id) AS open_tasks
-       FROM staff s
-       JOIN tasks t ON t.staff_id = s.id
-           AND t.status NOT IN ('Completed', 'Cancelled')
-       GROUP BY s.id
-       ORDER BY open_tasks DESC, s.last_name ASC, s.first_name ASC
-       LIMIT 5`
-    )
-    .all();
-
-  return rows.map((row) => ({
+  return result.rows.map((row) => ({
     staff_id: row.staff_id,
     full_name: (row.first_name + ' ' + row.last_name).trim(),
     open_tasks: row.open_tasks

@@ -1,6 +1,7 @@
 const staffRepository = require('../repositories/staffRepository');
 const departmentRepository = require('../repositories/departmentRepository');
 const roleRepository = require('../repositories/roleRepository');
+const { isForeignKeyConstraintError, isUniqueConstraintError } = require('../database/errors');
 
 const SUPPORTED_FILTERS = ['search', 'department', 'role', 'status'];
 const SUPPORTED_STATUSES = ['Active', 'On Leave', 'Inactive'];
@@ -37,7 +38,7 @@ function readFilter(query, key) {
   return value.trim();
 }
 
-function getStaff(req, res) {
+async function getStaff(req, res) {
   try {
     const filters = {};
 
@@ -45,14 +46,14 @@ function getStaff(req, res) {
       filters[key] = readFilter(req.query, key);
     }
 
-    sendSuccess(res, staffRepository.findAll(filters));
+    sendSuccess(res, await staffRepository.findAll(filters));
   } catch (error) {
     console.error('Failed to load staff:', error.message);
     sendError(res, 500, 'Unable to load staff');
   }
 }
 
-function getStaffById(req, res) {
+async function getStaffById(req, res) {
   const { id } = req.params;
 
   if (!/^\d+$/.test(id)) {
@@ -61,7 +62,7 @@ function getStaffById(req, res) {
   }
 
   try {
-    const staff = staffRepository.findById(id);
+    const staff = await staffRepository.findById(id);
 
     if (!staff) {
       sendError(res, 404, 'Staff member not found');
@@ -162,15 +163,7 @@ function validateCreationInput(input) {
   return null;
 }
 
-function isForeignKeyConstraintError(error) {
-  return Boolean(error && error.code === 'SQLITE_CONSTRAINT_FOREIGNKEY');
-}
-
-function isUniqueConstraintError(error) {
-  return Boolean(error && typeof error.code === 'string' && error.code.startsWith('SQLITE_CONSTRAINT'));
-}
-
-function createStaff(req, res) {
+async function createStaff(req, res) {
   const input = readCreationInput(req);
   const validationError = validateCreationInput(input);
 
@@ -180,18 +173,17 @@ function createStaff(req, res) {
   }
 
   try {
-    /* Existing departments and roles are the only ones that may be referenced. */
-    if (input.departmentId.supplied && !departmentRepository.findById(input.departmentId.value)) {
+    if (input.departmentId.supplied && !(await departmentRepository.findById(input.departmentId.value))) {
       sendError(res, 400, 'Select a valid department');
       return;
     }
 
-    if (input.roleId.supplied && !roleRepository.findById(input.roleId.value)) {
+    if (input.roleId.supplied && !(await roleRepository.findById(input.roleId.value))) {
       sendError(res, 400, 'Select a valid role');
       return;
     }
 
-    if (staffRepository.emailExists(input.email)) {
+    if (await staffRepository.emailExists(input.email)) {
       sendError(res, DUPLICATE_STATUS, 'A staff member with this email address already exists');
       return;
     }
@@ -199,7 +191,7 @@ function createStaff(req, res) {
     let staffId;
 
     try {
-      staffId = staffRepository.create({
+      staffId = await staffRepository.create({
         firstName: input.firstName,
         lastName: input.lastName,
         email: input.email,
@@ -213,7 +205,6 @@ function createStaff(req, res) {
         employmentStatus: input.employmentStatus
       });
     } catch (error) {
-      /* Second line of defence behind the pre-checks above. */
       if (isForeignKeyConstraintError(error)) {
         sendError(res, 400, 'Select a valid department or role');
         return;
@@ -227,7 +218,7 @@ function createStaff(req, res) {
       throw error;
     }
 
-    const staff = staffRepository.findById(staffId);
+    const staff = await staffRepository.findById(staffId);
 
     if (!staff) {
       sendError(res, 500, 'Unable to add staff member');

@@ -2,6 +2,7 @@ const config = require('../config/config');
 const adminRepository = require('../repositories/adminRepository');
 const passwordService = require('../services/passwordService');
 const sessionService = require('../services/sessionService');
+const { isUniqueConstraintError } = require('../database/errors');
 const { serializeCookie } = require('../utils/cookies');
 
 const USERNAME_PATTERN = /^[A-Za-z0-9_.-]+$/;
@@ -75,8 +76,8 @@ function buildClearCookie() {
   });
 }
 
-function startAuthenticatedSession(res, adminId) {
-  const sessionId = sessionService.startSession(adminId);
+async function startAuthenticatedSession(res, adminId) {
+  const sessionId = await sessionService.startSession(adminId);
 
   res.append('Set-Cookie', buildSessionCookie(sessionId));
 }
@@ -123,10 +124,7 @@ function validateRegistration(input) {
     return 'Password is required';
   }
 
-  if (
-    input.password.trim().length < PASSWORD_MIN ||
-    input.password.length > PASSWORD_MAX
-  ) {
+  if (input.password.trim().length < PASSWORD_MIN || input.password.length > PASSWORD_MAX) {
     return 'Password must be between ' + PASSWORD_MIN + ' and ' + PASSWORD_MAX + ' characters';
   }
 
@@ -141,11 +139,7 @@ function validateRegistration(input) {
   return null;
 }
 
-function isUniqueConstraintError(error) {
-  return Boolean(error && typeof error.code === 'string' && error.code.startsWith('SQLITE_CONSTRAINT'));
-}
-
-function register(req, res) {
+async function register(req, res) {
   try {
     const input = readRegistrationInput(req);
     const validationError = validateRegistration(input);
@@ -155,12 +149,12 @@ function register(req, res) {
       return;
     }
 
-    if (adminRepository.usernameExists(input.username)) {
+    if (await adminRepository.usernameExists(input.username)) {
       sendError(res, DUPLICATE_STATUS, 'Username is already taken');
       return;
     }
 
-    if (adminRepository.emailExists(input.email)) {
+    if (await adminRepository.emailExists(input.email)) {
       sendError(res, DUPLICATE_STATUS, 'Email address is already registered');
       return;
     }
@@ -168,7 +162,7 @@ function register(req, res) {
     let adminId;
 
     try {
-      adminId = adminRepository.create({
+      adminId = await adminRepository.create({
         username: input.username,
         email: input.email,
         passwordHash: passwordService.hashPassword(input.password),
@@ -183,9 +177,13 @@ function register(req, res) {
       throw error;
     }
 
-    startAuthenticatedSession(res, adminId);
+    await startAuthenticatedSession(res, adminId);
 
-    sendSuccess(res, { admin: { id: adminId, username: input.username, email: input.email, full_name: input.fullName } }, 201);
+    sendSuccess(
+      res,
+      { admin: { id: adminId, username: input.username, email: input.email, full_name: input.fullName } },
+      201
+    );
   } catch (error) {
     console.error('Failed to register administrator:', error.message);
     sendError(res, 500, 'Unable to register administrator');
@@ -202,7 +200,7 @@ function getTimingPadHash() {
   return timingPadHash;
 }
 
-function login(req, res) {
+async function login(req, res) {
   try {
     const body = readBody(req);
     const email = normalizeEmail(body.email);
@@ -218,7 +216,7 @@ function login(req, res) {
       return;
     }
 
-    const credentials = adminRepository.findCredentialsByEmail(email);
+    const credentials = await adminRepository.findCredentialsByEmail(email);
     const passwordMatches = passwordService.verifyPassword(
       password,
       credentials ? credentials.password_hash : getTimingPadHash()
@@ -229,7 +227,7 @@ function login(req, res) {
       return;
     }
 
-    startAuthenticatedSession(res, credentials.id);
+    await startAuthenticatedSession(res, credentials.id);
 
     sendSuccess(res, { admin: toSafeAdmin(credentials) });
   } catch (error) {
@@ -238,14 +236,14 @@ function login(req, res) {
   }
 }
 
-function logout(req, res) {
+async function logout(req, res) {
   res.append('Set-Cookie', buildClearCookie());
 
   try {
     const sessionId = sessionService.getSessionId(req);
 
     if (sessionId) {
-      sessionService.endSession(sessionId);
+      await sessionService.endSession(sessionId);
     }
 
     sendSuccess(res, { message: 'Signed out' });

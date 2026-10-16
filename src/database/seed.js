@@ -1,4 +1,5 @@
-const { getDatabase, closeDatabase, initializeSchema } = require('./db');
+const db = require('./db');
+const dialect = require('./dialect');
 
 const departments = [
   {
@@ -258,32 +259,26 @@ const staff = [
   }
 ];
 
-function seedDepartments(db) {
-  const insert = db.prepare(
-    'INSERT INTO departments (name, description) VALUES (@name, @description) ON CONFLICT(name) DO NOTHING'
-  );
-  const run = db.transaction((rows) => {
-    for (const row of rows) {
-      insert.run(row);
-    }
-  });
-  run(departments);
+async function seedDepartments(tx) {
+  for (const row of departments) {
+    await tx.query(
+      'INSERT INTO departments (name, description) VALUES (@name, @description) ON CONFLICT(name) DO NOTHING',
+      row
+    );
+  }
 }
 
-function seedRoles(db) {
-  const insert = db.prepare(
-    'INSERT INTO roles (name, description) VALUES (@name, @description) ON CONFLICT(name) DO NOTHING'
-  );
-  const run = db.transaction((rows) => {
-    for (const row of rows) {
-      insert.run(row);
-    }
-  });
-  run(roles);
+async function seedRoles(tx) {
+  for (const row of roles) {
+    await tx.query(
+      'INSERT INTO roles (name, description) VALUES (@name, @description) ON CONFLICT(name) DO NOTHING',
+      row
+    );
+  }
 }
 
-function seedStaff(db) {
-  const insert = db.prepare(`
+async function seedStaff(tx) {
+  const insert = `
     INSERT INTO staff (
       first_name, last_name, email, phone, job_title,
       department_id, role_id, location, avatar_url, bio, employment_status
@@ -292,70 +287,77 @@ function seedStaff(db) {
       @department_id, @role_id, @location, @avatar_url, @bio, @employment_status
     )
     ON CONFLICT(email) DO NOTHING
-  `);
+  `;
 
-  const findDepartment = db.prepare('SELECT id FROM departments WHERE name = ?');
-  const findRole = db.prepare('SELECT id FROM roles WHERE name = ?');
+  for (const row of staff) {
+    const department = await tx.query('SELECT id FROM departments WHERE name = @name', {
+      name: row.department
+    });
+    const role = await tx.query('SELECT id FROM roles WHERE name = @name', { name: row.role });
 
-  const run = db.transaction((rows) => {
-    for (const row of rows) {
-      const department = findDepartment.get(row.department);
-      const role = findRole.get(row.role);
-
-      if (!department || !role) {
-        throw new Error(
-          'Missing reference for staff member ' + row.email + ': ' + row.department + ' / ' + row.role
-        );
-      }
-
-      insert.run({
-        first_name: row.first_name,
-        last_name: row.last_name,
-        email: row.email,
-        phone: row.phone,
-        job_title: row.job_title,
-        department_id: department.id,
-        role_id: role.id,
-        location: row.location,
-        avatar_url: row.avatar_url || '/assets/images/placeholders/avatar.svg',
-        bio: row.bio,
-        employment_status: row.employment_status
-      });
+    if (department.rows.length === 0 || role.rows.length === 0) {
+      throw new Error(
+        'Missing reference for staff member ' + row.email + ': ' + row.department + ' / ' + row.role
+      );
     }
-  });
 
-  run(staff);
+    await tx.query(insert, {
+      first_name: row.first_name,
+      last_name: row.last_name,
+      email: row.email,
+      phone: row.phone,
+      job_title: row.job_title,
+      department_id: department.rows[0].id,
+      role_id: role.rows[0].id,
+      location: row.location,
+      avatar_url: row.avatar_url || '/assets/images/placeholders/avatar.svg',
+      bio: row.bio,
+      employment_status: row.employment_status
+    });
+  }
 }
 
-function seedDatabase() {
-  const db = getDatabase();
+async function countTable(tx, table) {
+  const result = await tx.query(`SELECT ${dialect.count('*')} AS count FROM ${table}`);
+  return result.rows[0].count;
+}
 
-  initializeSchema();
+/*
+ * Idempotent: departments and roles are keyed on their unique name, staff on
+ * its unique email, so seeding can run on every startup and leaves existing
+ * rows untouched. The standalone `db:seed` script closes the connection when
+ * it finishes; a normal startup keeps it open for the application to use.
+ */
+async function seedDatabase() {
+  await db.initializeSchema();
 
-  const run = db.transaction(() => {
-    seedDepartments(db);
-    seedRoles(db);
-    seedStaff(db);
+  return db.transaction(async (tx) => {
+    await seedDepartments(tx);
+    await seedRoles(tx);
+    await seedStaff(tx);
+
+    return {
+      departments: await countTable(tx, 'departments'),
+      roles: await countTable(tx, 'roles'),
+      staff: await countTable(tx, 'staff')
+    };
   });
-  run();
-
-  const counts = {
-    departments: db.prepare('SELECT COUNT(*) AS count FROM departments').get().count,
-    roles: db.prepare('SELECT COUNT(*) AS count FROM roles').get().count,
-    staff: db.prepare('SELECT COUNT(*) AS count FROM staff').get().count
-  };
-
-  closeDatabase();
-
-  return counts;
 }
 
 if (require.main === module) {
-  const counts = seedDatabase();
-  console.log('Seed complete.');
-  console.log('  departments: ' + counts.departments);
-  console.log('  roles: ' + counts.roles);
-  console.log('  staff: ' + counts.staff);
+  seedDatabase()
+    .then(async (counts) => {
+      console.log('Seed complete.');
+      console.log('  departments: ' + counts.departments);
+      console.log('  roles: ' + counts.roles);
+      console.log('  staff: ' + counts.staff);
+      await db.close();
+    })
+    .catch(async (error) => {
+      console.error('Seed failed: ' + error.message);
+      await db.close();
+      process.exitCode = 1;
+    });
 }
 
 module.exports = { seedDatabase };

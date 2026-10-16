@@ -9,20 +9,20 @@ function generateSessionId() {
   return crypto.randomBytes(SESSION_ID_BYTES).toString('base64url');
 }
 
-function startSession(adminId) {
+async function startSession(adminId) {
   const sessionId = generateSessionId();
 
-  sessionRepository.create(sessionId, adminId, config.session.lifetimeDays);
+  await sessionRepository.create(sessionId, adminId, config.session.lifetimeDays);
 
   return sessionId;
 }
 
-function endSession(sessionId) {
+async function endSession(sessionId) {
   return sessionRepository.remove(sessionId);
 }
 
-function resolveSession(sessionId) {
-  const session = sessionRepository.findActive(sessionId);
+async function resolveSession(sessionId) {
+  const session = await sessionRepository.findActive(sessionId);
 
   if (!session) {
     return null;
