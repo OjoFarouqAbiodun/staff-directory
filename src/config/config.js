@@ -1,10 +1,23 @@
 const path = require('path');
-const { resolveSslMode } = require('./ssl');
+const { resolveSslMode, sslRootCertFromUrl } = require('./ssl');
 const { resolveStatementTimeout, resolveSeedOnStartup } = require('./options');
 
 const rootDir = path.resolve(__dirname, '..', '..');
 
 const SESSION_LIFETIME_DAYS = 7;
+
+/*
+ * The PEM file used to verify the server. DB_SSL_CA wins; otherwise a
+ * sslrootcert parameter in DATABASE_URL is honoured, because node-postgres reads
+ * it and then the URL merge would discard it. Relative paths resolve against the
+ * project root so the value never depends on the current directory. The path is
+ * never logged and the file's contents are never printed.
+ */
+function resolveSslCaPath(url) {
+  const configured = process.env.DB_SSL_CA || sslRootCertFromUrl(url) || '';
+
+  return configured ? path.resolve(rootDir, configured) : '';
+}
 
 /*
  * The application runs on one of two database engines:
@@ -34,7 +47,7 @@ module.exports = {
    * is never logged.
    */
   databaseSslMode: databaseUrl ? resolveSslMode(process.env) : 'disable',
-  databaseSslCaPath: process.env.DB_SSL_CA || '',
+  databaseSslCaPath: resolveSslCaPath(databaseUrl),
 
   /* Per-connection statement timeout; see resolveStatementTimeout. */
   databaseStatementTimeoutMs: resolveStatementTimeout(process.env),

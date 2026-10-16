@@ -1,3 +1,9 @@
+const path = require('path');
+const { loadEnvFile } = require('./src/config/env');
+
+/* Load an optional project-root .env before anything reads process.env. */
+loadEnvFile(path.join(__dirname, '.env'));
+
 const app = require('./src/app');
 const config = require('./src/config/config');
 const db = require('./src/database/db');

@@ -1,7 +1,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
-const { resolveSslMode, buildSslOptions, stripSslUrlParameters } = require('../src/config/ssl');
+const { resolveSslMode, buildSslOptions, stripSslUrlParameters, sslRootCertFromUrl } = require('../src/config/ssl');
 
 test('TLS verification is selected by default for a remote database', () => {
   assert.equal(resolveSslMode({}), 'verify');
@@ -68,4 +68,19 @@ test('stripSslUrlParameters leaves a URL without TLS parameters unchanged', () =
   assert.equal(stripSslUrlParameters('postgresql://user:pw@host:5432/db'), 'postgresql://user:pw@host:5432/db');
   assert.equal(stripSslUrlParameters('postgresql://user:pw@host:5432/db?connect_timeout=10'), 'postgresql://user:pw@host:5432/db?connect_timeout=10');
   assert.equal(stripSslUrlParameters(''), '');
+});
+
+test('sslRootCertFromUrl finds sslrootcert regardless of case or encoding', () => {
+  assert.equal(
+    sslRootCertFromUrl('postgresql://user:pw@host:5432/db?sslmode=verify-full&sslrootcert=certs%2Fsupabase-root-ca.crt'),
+    'certs/supabase-root-ca.crt'
+  );
+  assert.equal(sslRootCertFromUrl('postgresql://user:pw@host:5432/db?SSLROOTCERT=/tmp/ca.crt'), '/tmp/ca.crt');
+});
+
+test('sslRootCertFromUrl returns null when absent', () => {
+  assert.equal(sslRootCertFromUrl('postgresql://user:pw@host:5432/db?sslmode=require'), null);
+  assert.equal(sslRootCertFromUrl('postgresql://user:pw@host:5432/db'), null);
+  assert.equal(sslRootCertFromUrl(''), null);
+  assert.equal(sslRootCertFromUrl(undefined), null);
 });

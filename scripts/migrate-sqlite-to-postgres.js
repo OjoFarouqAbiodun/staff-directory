@@ -33,6 +33,15 @@
  * database and its backup are never modified. Credentials are never printed.
  */
 
+const path = require('path');
+const fs = require('fs');
+const { X509Certificate } = require('crypto');
+
+const { loadEnvFile } = require('../src/config/env');
+
+/* Load an optional project-root .env before config reads process.env. */
+loadEnvFile(path.join(__dirname, '..', '.env'));
+
 const config = require('../src/config/config');
 const db = require('../src/database/db');
 const { redactSecrets } = require('../src/database/poolErrors');
@@ -523,6 +532,38 @@ function sanitizeMigrationError(error) {
   return redactSecrets(raw);
 }
 
+/*
+ * A short, non-secret summary of the effective TLS settings, printed before a
+ * real connection. It confirms which CA (if any) will be used, so a missing or
+ * mismatched DB_SSL_CA is visible up front instead of surfacing as an opaque
+ * SELF_SIGNED_CERT_IN_CHAIN. Credentials and the connection string are never
+ * included.
+ */
+function describeSslConfiguration() {
+  let ca = 'not configured (set DB_SSL_CA or sslrootcert in DATABASE_URL)';
+
+  if (config.databaseSslCaPath) {
+    try {
+      const pem = fs.readFileSync(config.databaseSslCaPath, 'utf8');
+      const match = pem.match(/-----BEGIN CERTIFICATE-----[\s\S]*?-----END CERTIFICATE-----/);
+
+      if (match) {
+        const certificate = new X509Certificate(match[0]);
+        /* The common name is the last line of the OpenSSL-style subject. */
+        const commonName = certificate.subject.split('\n').pop();
+
+        ca = commonName + ' (' + config.databaseSslCaPath + ')';
+      } else {
+        ca = 'configured but no PEM certificate found (' + config.databaseSslCaPath + ')';
+      }
+    } catch (error) {
+      ca = 'configured but not readable (' + config.databaseSslCaPath + ')';
+    }
+  }
+
+  return 'TLS: mode=' + config.databaseSslMode + '; CA=' + ca;
+}
+
 function reportPlan(plan, options) {
   console.log('Source SQLite database: ' + config.dbFile);
 
@@ -564,6 +605,8 @@ async function run() {
     if (options.dryRun) {
       return;
     }
+
+    console.log(describeSslConfiguration());
 
     if (options.verify) {
       const report = await verifyDestination((text, params) => db.query(text, params), plan);
@@ -648,5 +691,6 @@ module.exports = {
   naturalKeyOf,
   sanitizeMigrationError,
   formatVerifyReport,
-  reportHasProblems
+  reportHasProblems,
+  describeSslConfiguration
 };

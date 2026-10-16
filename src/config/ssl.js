@@ -44,6 +44,50 @@ function buildSslOptions(mode, ca) {
 }
 
 /*
+ * Read one query-string parameter from a connection string, case-insensitively.
+ * Returns null when the parameter is absent. The value is never logged.
+ */
+function readConnectionParameter(connectionString, name) {
+  if (typeof connectionString !== 'string') {
+    return null;
+  }
+
+  const queryIndex = connectionString.indexOf('?');
+
+  if (queryIndex === -1) {
+    return null;
+  }
+
+  for (const pair of connectionString.slice(queryIndex + 1).split('&')) {
+    const separator = pair.indexOf('=');
+
+    if (separator === -1 || pair.slice(0, separator).toLowerCase() !== name) {
+      continue;
+    }
+
+    const raw = pair.slice(separator + 1);
+
+    try {
+      return decodeURIComponent(raw);
+    } catch (error) {
+      return raw;
+    }
+  }
+
+  return null;
+}
+
+/*
+ * The CA file named by sslrootcert in DATABASE_URL, if any. pg-connection-string
+ * would otherwise read it and then have its value discarded by the URL merge;
+ * surfacing it here lets the same file keep verifying without the URL
+ * parameter overriding the driver options.
+ */
+function sslRootCertFromUrl(connectionString) {
+  return readConnectionParameter(connectionString, 'sslrootcert');
+}
+
+/*
  * Query-string parameters that node-postgres' connection-string parser turns
  * into the `ssl` option. ConnectionParameters merges the parsed URL *over* the
  * options object we pass (pg/lib/connection-parameters.js), so any of these in
@@ -94,5 +138,6 @@ function stripSslUrlParameters(connectionString) {
 module.exports = {
   resolveSslMode,
   buildSslOptions,
-  stripSslUrlParameters
+  stripSslUrlParameters,
+  sslRootCertFromUrl
 };
