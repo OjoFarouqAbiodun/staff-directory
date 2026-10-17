@@ -173,9 +173,11 @@ The system was developed as a three-tier client–server application. The presen
 with HTML5, Tailwind CSS (loaded via a Content Delivery Network) and Vanilla JavaScript, with no
 client-side framework. The business and data-access tiers were implemented in Node.js using the
 Express.js framework, organised into clearly separated routes, controllers, repositories and
-middleware. Persistent storage is provided by a SQLite database accessed through the better-sqlite3
-driver, which exposes a synchronous, SQL-native programming interface and therefore requires no
-separate Object-Relational Mapping layer.
+middleware. For local development and automated testing, persistent storage is provided by a SQLite
+database accessed through the better-sqlite3 driver, which exposes a synchronous, SQL-native
+programming interface and therefore requires no separate Object-Relational Mapping layer. The
+production deployment uses a hosted PostgreSQL database (Supabase) instead, selected automatically
+when `DATABASE_URL` is set; the same relational schema is expressed in both SQL dialects.
 
 The database was designed relationally with six tables — `departments`, `roles`, `staff`,
 `admins`, `admin_sessions` and `tasks` — connected by one-to-many relationships, protected by
@@ -199,8 +201,8 @@ each expanded task — with all recorded test cases passing. The result is a wor
 application that demonstrates the practical value of relational database design, REST-based web
 application development, and the secure administrative extension of a read-only service.
 
-**Keywords:** Staff Directory, Node.js, Express.js, SQLite, better-sqlite3, REST API, Vanilla
-JavaScript, Responsive Web Design, Relational Database, Authentication, Task Management,
+**Keywords:** Staff Directory, Node.js, Express.js, SQLite, better-sqlite3, PostgreSQL, REST API,
+Vanilla JavaScript, Responsive Web Design, Relational Database, Authentication, Task Management,
 Dashboard.
 
 ---
@@ -284,6 +286,7 @@ Dashboard.
 | — | Appendix C — Project Structure | |
 | — | Appendix D — Testing Summary | |
 | — | Appendix E — Screenshot / Evidence Index | |
+| — | Appendix F — Post-Production Verification | |
 
 ---
 
@@ -433,7 +436,8 @@ The following are within the scope of the project and were implemented:
 * **Filtering** by department, by role and by employment status.
 * **Combined filtering**, in which all active criteria apply together.
 * A **read-only REST API** for staff, departments, roles and service health.
-* **SQLite storage** of all application data in a single portable database file.
+* **Relational storage of all application data** — SQLite in local development and testing, and
+  PostgreSQL in the production deployment.
 * A **responsive user interface** that adapts to mobile, tablet and desktop viewport widths.
 * **Accessible interaction**, including keyboard operation of the profile modal, a skip-to-content
   link, visible focus indicators and appropriate ARIA attributes.
@@ -470,8 +474,8 @@ implemented, and are not part of the delivered system:
 * **Performance appraisal or performance management.**
 * **Complex human-resource administration**, such as disciplinary records, promotion history,
   training logs or benefits administration.
-* **Multi-user write concurrency, pagination of large result sets, and deployment to production
-  infrastructure.**
+* **Multi-user write concurrency and pagination of large result sets.** (The production deployment
+  itself was carried out after this report's first draft and is recorded in Appendix F.)
 
 The authentication boundary is worth stating precisely: **every visitor can read the directory
 without signing in, but only a signed-in administrator can create staff members, manage tasks or
@@ -524,27 +528,33 @@ The following limitations are genuine and are stated plainly rather than present
    client machine has no internet access, the framework's stylesheet will not load and the interface
    will render as unstyled HTML. A production deployment would compile the utility classes locally
    at build time and remove this dependency.
-3. **Local, file-based deployment.** SQLite is deployed as a single local file at
-   `data/staff-directory.db`. This is appropriate for a demonstration or single-site deployment, but
-   it is not a substitute for a managed database server in a multi-site or high-concurrency
-   production environment.
+3. **Two database engines in two roles.** Local development and the automated test suite use a
+   single SQLite file at `data/staff-directory.db`; the live deployment uses a hosted PostgreSQL
+   database (Supabase) selected automatically when `DATABASE_URL` is set. SQLite remains appropriate
+   for local demonstration and testing, while PostgreSQL is what production uses. Behaviour under
+   concurrent multi-user load has not been tested on either engine.
 4. **Single-role authentication only.** The application authenticates administrators and protects
    the data-changing routes, but it implements a single administrative role. There is no granular
    role-based access control (for example, separate viewer, editor and manager permissions), no
    account recovery, and no self-service password reset.
-5. **No production multi-user deployment.** The application has been developed and verified on a
-   local workstation. It has not been deployed to a production host, has not been load-tested, and
-   has not been through an organizational security review.
+5. **Production deployment is limited and only partly verified.** The application is deployed as
+   two Render services — a static frontend and an Express/PostgreSQL backend — and the live
+   administrator sign-in, the health endpoint and the database connection have been verified (see
+   Appendix F). However, workflows such as creating records or managing tasks have **not** been
+   exercised on the live site, data persistence across a restart or redeploy has **not** been
+   tested, and no load, compatibility or penetration testing has been performed.
 6. **Native module dependency.** The `better-sqlite3` package is a native add-on rather than pure
    JavaScript. It compiles or downloads a platform-specific binary during installation, so on some
    environments — particularly older or locked-down systems — installation may require build tools
    or may fail. This is an operational inconvenience, not a design fault, and it is a direct
    consequence of choosing a fast, SQL-native SQLite driver.
-7. **No maintained automated test suite.** Verification was carried out through structured manual
-   and scripted checks — including throwaway copies of the database so the real data was never
-   modified — recorded in this report and the project documentation, rather than through a
-   maintained automated test framework committed to the repository. The absence of such a suite
-   means regressions would not be detected automatically between later changes.
+7. **Partial automated test coverage.** A maintained automated test suite now exists and is
+   committed to the repository (run with `npm test`, using Node's built-in `node --test`). It
+   exercises configuration, both SQL dialects, the repository layer and error handling, and the
+   one-time migration logic — 119 tests at the time of writing. It does **not** cover the front end
+   or the HTTP controllers end-to-end, and it runs against SQLite, so those areas would still need a
+   fresh manual pass. The larger verification recorded in Chapter Six was performed with throwaway
+   harness scripts that are not part of the repository.
 8. **Limited data-entry surface.** Administrators can create staff members and fully manage tasks,
    but staff records cannot yet be edited or deleted through the interface, and there is no audit
    log recording which administrator performed which action. The browser session cookie is the only
@@ -552,11 +562,11 @@ The following limitations are genuine and are stated plainly rather than present
 9. **Tailwind CDN build consideration.** Because the CDN build scans served source text for class
    names, some class strings in the JavaScript are deliberately written as complete literal strings.
    This is a constraint of the chosen loading method, and it would be removed by a build step.
-10. **Ephemeral free-instance storage.** On the free deployment tier the Render free-instance
-    filesystem is ephemeral: the SQLite file is re-created and re-seeded on every service restart
-    or redeploy unless a persistent disk is attached. Locally the database persists normally. This
-    is a property of the deployment target, not of the application code, but it means anything
-    created through the interface on a re-deployed instance is lost on the next restart.
+10. **Deployment depends on external configuration.** Data persistence in production relies on the
+    Supabase PostgreSQL service, and the front end reaches the API through an `/api` rewrite
+    configured in the Render dashboard. Neither is defined in this repository, and the `render.yaml`
+    Blueprint does not describe the live two-service topology, so the deployment cannot be
+    reproduced from the repository alone.
 
 These limitations do not invalidate the project, which was designed to demonstrate and verify the
 core objective within a realistic attachment period. They define the boundary between what was
@@ -805,7 +815,7 @@ logic and data responsibilities:
 |---|---|---|
 | Presentation | Display data and accept user input | HTML5, Tailwind CSS, Vanilla JavaScript in `public/` |
 | Application logic | Validate requests, apply rules, orchestrate | Express.js routes, controllers and middleware in `src/` |
-| Data | Store, retrieve and enforce integrity | SQLite via `better-sqlite3` in `src/database/` |
+| Data | Store, retrieve and enforce integrity | SQLite (`better-sqlite3`) locally and PostgreSQL (`pg`) in production, in `src/database/` |
 
 The principal benefit of the three-tier form is **separation of concerns**: the same data can be
 served to a different front end without changing the application logic, and business rules can be
@@ -890,10 +900,11 @@ proposed system.
 ### 3.3 Proposed System
 
 The proposed solution is a three-tier web application in which all staff information is held in a
-single SQLite relational database and served over a REST API to a responsive browser interface. The
-public side of the API is read-only; a protected set of administrator capabilities (authentication,
-staff creation, task management and the dashboard) extends the original directory without changing
-any of its public endpoints.
+relational database — SQLite for local development and testing, PostgreSQL in the production
+deployment — and served over a REST API to a responsive browser interface. The public side of the API
+is read-only; a protected set of administrator capabilities (authentication, staff creation, task
+management and the dashboard) extends the original directory without changing any of its public
+endpoints.
 
 In operation, the system works as follows:
 
@@ -1032,8 +1043,10 @@ No server hardware, GPU, dedicated storage array or network-attached storage is 
 | Software | Version | Purpose |
 |---|---|---|
 | Express.js | ^5.2.1 | HTTP server, routing, static file serving |
-| better-sqlite3 | ^13.0.3 | Synchronous SQLite driver; exposes SQL directly |
-| SQLite | 3 (bundled with better-sqlite3) | Relational storage engine |
+| better-sqlite3 | ^13.0.3 | Synchronous SQLite driver; local development and tests |
+| SQLite | 3 (bundled with better-sqlite3) | Local relational storage engine |
+| `pg` | ^8.23.1 | PostgreSQL client for the production database |
+| PostgreSQL | Hosted (Supabase) | Production relational storage engine |
 | nodemon | ^3.1.10 (development only) | Automatic server restart during development |
 
 **Front end**
@@ -1094,10 +1107,11 @@ routes  ->  controllers  ->  middleware (authenticate, parseCookies)
 repositories
       |
       v
-better-sqlite3 (prepared statements)
+database layer  (src/database/db.js)
       |
-      v
-SQLite database  (data/staff-directory.db)
+      +-- better-sqlite3  ->  SQLite file  (local, data/staff-directory.db)
+      |
+      +-- pg  ->  PostgreSQL  (production, Supabase)
 ```
 
 **Presentation tier.** `public/index.html` defines the page structure, and nine Vanilla JavaScript
@@ -1119,8 +1133,10 @@ requests to protected routes without a valid session), and **repositories** (whi
 map database rows to response objects). Password hashing and session handling are isolated in
 `src/services/passwordService.js` and `src/services/sessionService.js`.
 
-**Data tier.** `src/database/db.js` opens the SQLite database lazily, enables foreign key enforcement
-and WAL journaling, and applies `schema.sql` on initialization. Each repository (`staff`,
+**Data tier.** `src/database/db.js` is a small facade that selects the engine from the environment:
+with `DATABASE_URL` set it uses a pooled PostgreSQL connection (`pg`, applying
+`schema.postgres.sql`); otherwise it opens the local SQLite file lazily, enabling foreign key
+enforcement and WAL journaling and applying `schema.sql` on initialization. Each repository (`staff`,
 `department`, `role`, `admin`, `session`, `task`, `dashboard`) executes prepared statements and
 returns plain objects.
 
@@ -2194,8 +2210,9 @@ following are **not** implemented:
 * **Account recovery and self-service password reset.** A lost password cannot be reset through the
   application.
 * **Audit logging** of administrator actions (staff creation, task changes).
-* **Transport security** — the application serves plain HTTP locally. HTTPS would be required for
-  real deployment, and the production build documentation already notes this.
+* **Transport security** — the local application serves plain HTTP. The production deployment is
+  served over HTTPS by Render and the backend verifies the database TLS certificate (Appendix F);
+  TLS termination or a self-managed reverse proxy is not part of this repository.
 * **Rate limiting** — no request throttling is applied to login or other endpoints.
 * **Security headers** — no Content-Security-Policy, HSTS or related headers are set. Notably, a
   strict Content-Security-Policy would need to allow the Tailwind CDN used by the interface.
@@ -2277,6 +2294,10 @@ passing. Automated checks are distinguished from manually inspected ones through
 | Database | SQLite file `data/staff-directory.db`, seeded with 6 departments, 9 roles and 18 staff — plus, for every write-capable test, a byte-for-byte throwaway copy of that file (and a fresh schema-only copy for the zero-data checks) whose SHA-256 hashes were compared before and after |
 | Server | Node.js/Express listening on port 3000 (and dedicated harness ports for the throwaway copies), serving the front end from `public/` |
 | Developer tools | Browser developer tools for DOM, Network and Console inspection |
+
+> The environment above describes the **local** testing that produced Chapters Six and Seven; that
+> testing ran against SQLite. The later production deployment uses PostgreSQL, and the checks carried
+> out against it are recorded separately in Appendix F.
 
 ### 6.3 Test Cases and Results
 
@@ -2483,7 +2504,9 @@ foreign keys, and the indexes. The three tables added by the expanded tasks (`ad
 live database by `PRAGMA table_info`, `PRAGMA index_list` and the index report in Appendix B.4. The
 figure confirms the nullability documented in the report, in particular the actual nullability of
 `job_title`, `department_id` and `role_id`, which is nullable in the implemented schema as discussed
-in Section 4.2.3.
+in Section 4.2.3. Figure 10 was captured from the **local SQLite** database used for development and
+testing; the live deployment instead uses a PostgreSQL database with the equivalent schema
+(`src/database/schema.postgres.sql`).
 
 ### 7.4 Main Application
 
@@ -2631,11 +2654,13 @@ repositories, HTTP concerns to the controllers and rendering to the UI module, e
 read and verified independently, and new capability can be added without rewriting the system.
 
 The limitations are equally instructive. The write surface is incomplete (staff records cannot yet be
-edited or deleted, there is no audit log, and authentication is a single role), the data is fictional
-and the free deployment tier's filesystem is ephemeral, and the interface still depends on a CDN at
-runtime. It is a working, well-tested demonstration of the design — one that now extends well beyond a
-viewer into a genuinely usable administrative tool — not a production system, and this report does not
-present it as one. What has been demonstrated is the complete, verified path from requirements through
+edited or deleted, there is no audit log, and authentication is a single role), the data is
+fictional, and the interface still depends on a CDN at runtime. The live deployment — a static
+frontend paired with an Express/PostgreSQL backend — has been verified only at the level recorded in
+Appendix F: it has not been load or penetration tested, and persistence across a restart has not been
+confirmed. It is a working, well-tested demonstration of the design — one that now extends well beyond
+a viewer into a genuinely usable administrative tool — not a production system, and this report does
+not present it as one. What has been demonstrated is the complete, verified path from requirements through
 relational design and REST-based implementation to a tested and documented deliverable, including a
 secure administrative extension of a read-only service.
 
@@ -2643,10 +2668,11 @@ secure administrative extension of a read-only service.
 
 Several of the improvements recommended when the directory alone existed have since been implemented
 in the expanded scope: authentication with server-side sessions, a signed-in account view, staff
-creation through a protected endpoint and form, a full task-management backend and interface, and an
-administrator dashboard. The following therefore concern what is genuinely **still future work**. None
-of the items below is implemented in the delivered system, and none should be described as an existing
-feature.
+creation through a protected endpoint and form, a full task-management backend and interface, an
+administrator dashboard, and — after this report's first draft — a migration of the live database to
+hosted PostgreSQL and an actual production deployment. The following therefore concern what remains
+**future work**; where an item has since been partly implemented, this is stated explicitly. Items
+that are not marked as implemented are **not** existing features.
 
 **Staff editing and deletion.** The expanded scope implemented staff *creation*; editing and deleting
 staff records through the interface remain out of scope. Completing these with the same validation and
@@ -2670,24 +2696,26 @@ Server-side pagination with a total count, and possibly lazy loading, would allo
 without degrading the response size. The existing indexes on `department_id`, `role_id`,
 `employment_status` and `last_name` would support this.
 
-**A production database engine and durable storage.** For concurrent multi-user deployment, migrating
-from a local SQLite file to a hosted engine such as PostgreSQL or MySQL — or attaching a persistent
-disk to the deployment target — would remove the single-writer constraint, the ephemeral-instance
-resets documented in Section 1.7, and the concurrency limits of a local file. The repository layer is
-the natural place to make this change, since SQL is already isolated there.
+**A production database engine and durable storage.** *Implemented (operational follow-up only).* The
+live deployment now uses hosted PostgreSQL (Supabase) instead of a local SQLite file, so the
+single-writer constraint and the ephemeral-instance resets described in earlier drafts no longer apply
+to production. What remains is operational rather than architectural: confirming data persistence
+across a restart or redeploy, and verifying the hosted backup and restore procedure.
 
 **Image storage.** Avatar images are currently referenced by path. A future version could support
 uploading, resizing and storing avatars, with server-side validation of file type and size.
 
-**Deployment hardening.** Publishing the application to a hosting platform or an internal server,
-behind HTTPS and a reverse proxy, with environment-based configuration, would make the system available
-to actual users and completes the deployment notes already in `README.md`.
+**Deployment hardening.** *Partly implemented.* The application is published as two Render services
+(a static front end and an HTTPS Express/PostgreSQL backend) with environment-based configuration.
+What remains is hardening beyond HTTPS — request throttling and a formal review of the administrative
+endpoints — together with the deployment runbook and verification checklist added to `README.md`.
 
-**Automated testing.** Introducing a maintained automated test suite — unit tests for the repository and
-controller layers, and end-to-end tests for the user journeys — would allow regressions to be detected
-immediately. The verification carried out for this project used throwaway harness scripts applied to
-database copies; committing those harnesses (with a fixture database) as a repeatable suite is
-recommended.
+**Automated testing.** *Partly implemented.* A maintained suite now runs under `npm test` (Node's
+built-in `node --test`) and covers configuration, both SQL dialects, the repository layer, error
+handling and the one-time migration logic — 119 tests at the time of writing. It does not yet cover
+the front end or the HTTP controllers end-to-end, and it runs against SQLite; extending it to the API
+surface and adding a PostgreSQL-backed run would allow regressions in those areas to be caught
+automatically.
 
 **Compiling the front-end assets locally.** Replacing the Tailwind CDN reference with a build step that
 compiles the required CSS locally would remove the runtime internet dependency, eliminate the flash of
@@ -2865,6 +2893,10 @@ taken from the session server-side.
 **Database file:** `data/staff-directory.db` · **Engine:** SQLite 3 via `better-sqlite3` ·
 **Schema source:** `src/database/schema.sql` · **Foreign keys:** enabled ·
 **Journal mode:** WAL
+
+> Appendix B documents the **local SQLite** database used for development and testing. The production
+> deployment runs the equivalent schema (`src/database/schema.postgres.sql`) on PostgreSQL; the tables,
+> columns and indexes are the same, with PostgreSQL-specific type names.
 
 ### B.1 `departments` — 6 records
 
@@ -3103,7 +3135,8 @@ staff-directory/
 | Package | Version | Type | Purpose |
 |---|---|---|---|
 | `express` | ^5.2.1 | Runtime | HTTP server, routing, static files |
-| `better-sqlite3` | ^13.0.3 | Runtime | Synchronous SQLite driver |
+| `better-sqlite3` | ^13.0.3 | Runtime | Synchronous SQLite driver (local development and tests) |
+| `pg` | ^8.23.1 | Runtime | PostgreSQL driver (production database) |
 | `nodemon` | ^3.1.10 | Development | Automatic restart |
 
 The front end has **no** dependencies: no framework, no bundler and no build step.
@@ -3160,8 +3193,13 @@ The front end has **no** dependencies: no framework, no bundler and no build ste
 
 The following were **not** tested and no claim is made about them: load and performance testing,
 concurrent multi-user access, cross-browser and cross-platform compatibility, penetration testing,
-accessibility audit against a formal standard, behaviour with real organizational data, encrypted
-transport, and production deployment.
+accessibility audit against a formal standard, behaviour with real organizational data, and data
+persistence across a restart or redeploy.
+
+Two items previously listed here have since been partly addressed and are recorded in Appendix F:
+**encrypted transport** is in use (the live backend verifies the Supabase TLS certificate against the
+Supabase CA) and the application **is deployed** to production — though only the specific checks listed
+in Appendix F were performed. Everything else in this list remains untested.
 
 ### D.5 Re-testing Guidance
 
@@ -3241,6 +3279,60 @@ Section 6.1.
   `employment_status` as `NOT NULL DEFAULT 'Active'`, matching `src/database/schema.sql` exactly.
 * If a standalone responsive screenshot is required for Figure 08 in the submitted document, it must
   be captured at the time of submission. It cannot be reconstructed from the existing evidence.
+
+---
+
+## APPENDIX F — POST-PRODUCTION VERIFICATION
+
+> This appendix was added after the body of the report was written, to record the production
+> deployment and the migration of the live database to PostgreSQL. It states only what was actually
+> observed. It does **not** alter any result recorded in Chapters Six or Seven, and it does not claim
+> that any workflow beyond those listed below has been tested on the live site.
+
+### F.1 Deployment topology
+
+The application is deployed as **two separate Render services**:
+
+| Component | Role |
+|---|---|
+| Backend  | Express REST API on `/api/*`, connected to a hosted PostgreSQL database (Supabase) |
+| Frontend | A static site serving the files in `public/` |
+
+The static frontend reaches the API through an **`/api` rewrite configured in the Render dashboard**.
+That rewrite is not defined anywhere in the repository, so its exact form must be confirmed in the
+Render dashboard before any change is made. The repository's `render.yaml` Blueprint describes a
+single service and does **not** reproduce this two-service topology; it must not be applied or synced
+to the live services.
+
+### F.2 Verified checks
+
+The following were verified by **read-only** checks against the live deployment:
+
+| Check | Result |
+|---|---|
+| `GET /api/health` on the backend | HTTP 200 |
+| Backend database engine | PostgreSQL (selected because `DATABASE_URL` is set) |
+| Database contents at verification time | 6 departments, 9 roles, 1 administrator account, 18 staff records |
+| Transport security | TLS verified against the Supabase CA (`DB_SSL_CA`; certificate verification enabled) |
+| Administrator sign-in on the live site | Confirmed working by the project owner |
+| `GET /api/staff/:id` | Returns a record carrying an ISO-format `created_at` |
+
+### F.3 Not verified
+
+The following were **not** tested, and no claim is made about them:
+
+* Data persistence across a service restart or redeploy.
+* The write workflows on the live site (creating a staff member, and the full task lifecycle).
+* The dashboard against the live database.
+* Behaviour under concurrent or load conditions, cross-browser and cross-platform compatibility, and
+  penetration testing.
+
+### F.4 Follow-up evidence still to be captured
+
+No production screenshots have been captured, and none have been fabricated. If the submitted document
+requires them, the following should be captured live: the directory, the sign-in screen, a signed-in
+account view, the dashboard, and the database structure read from PostgreSQL — as distinct from
+Figure 10, which shows the local SQLite structure.
 
 ---
 

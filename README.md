@@ -181,7 +181,7 @@ staff-directory/
 ├── SIWES_PROJECT_REPORT.md         # SIWES project report
 ├── package.json                    # Dependencies and npm scripts
 ├── package-lock.json               # Exact dependency versions
-├── render.yaml                     # Render deployment blueprint (see section 8)
+├── render.yaml                     # Render blueprint (historical only — see section 8)
 └── server.js                       # Server entry point
 ```
 
@@ -202,8 +202,9 @@ staff-directory/
   server is running; these are normal and can be ignored.
 - **`scripts/`** — `migrate-sqlite-to-postgres.js`, the one-time import that copies the local
   SQLite data into PostgreSQL. It is never run automatically.
-- **`render.yaml`** — the Render Blueprint that declares the production service, its commands,
-  and the non-secret environment variables. Secrets are added in the Render Dashboard.
+- **`render.yaml`** — a Render Blueprint retained for **historical reference only**. It describes a
+  **single** service and does **not** reproduce the live two-service deployment (see section 8). Do
+  not apply or sync it to the existing Render services.
 - **`certs/`** — an optional, git-ignored folder holding the Supabase CA certificate used to
   verify the database TLS certificate locally. On Render the same file is supplied as a secret
   file instead.
@@ -298,6 +299,11 @@ Seed complete.
 The seeded data is **fictional sample data** for demonstration and testing: 6 departments,
 9 roles and 18 staff members, all invented.
 
+> **Which database does this touch?** `npm run db:init` and `npm run db:seed` operate on whichever
+> database `DATABASE_URL` selects. The standalone seed script has **no production guard**: with
+> `DATABASE_URL` set it targets the hosted PostgreSQL database. Use these commands for **local
+> SQLite development only** — never run them against production (see Section 8).
+
 ---
 
 ## 8. Running the Application
@@ -334,18 +340,44 @@ environment variable, for example `PORT=4000 npm start` (PowerShell:
 
 ### Deploying to Render (PostgreSQL/Supabase)
 
-The application runs as a **single Node.js/Express service** that serves both the REST API
-(`/api/*`) and the static frontend from the same origin, and binds to the `PORT` variable on
-`0.0.0.0`, as hosting platforms require. There is therefore **no separate static site and no
-`/api` rewrite to configure**.
+> **Correction.** Earlier versions of this section (and of `render.yaml`) stated that the
+> application runs as a **single** service with "no separate static site and no `/api` rewrite".
+> That is **not** how the project is deployed. The **live deployment is two separate Render
+> services**, and the static frontend reaches the backend through an `/api` rewrite configured in
+> the Render dashboard. The text below has been corrected to match the verified deployment.
+
+The project runs as **two separate Render services**:
+
+| Service  | Render name                     | URL                                              | Role                                        |
+| -------- | ------------------------------- | ------------------------------------------------ | ------------------------------------------- |
+| Backend  | `staff-directory-gc6d`          | `https://staff-directory-gc6d.onrender.com`      | Express REST API on `/api/*` + PostgreSQL   |
+| Frontend | `siwes-staff-directory-static`  | `https://siwes-staff-directory-static.onrender.com` | Static files from `public/`              |
+
+The **frontend is a static site** that serves the files in `public/` and calls the backend at the
+same origin under `/api/*`. The browser request is forwarded to the backend by an **`/api`
+rewrite/proxy rule configured in the Render dashboard**. There is **no rewrite configuration in
+this repository** (no `_redirects`, `netlify.toml`, `vercel.json` or similar file), so the exact
+rule cannot be confirmed from source: **verify the rewrite in the Render dashboard** (frontend
+service → Redirects/Rewrites) before changing anything. Do not assume the rule's exact form from
+this document.
+
+> **Do not apply or sync `render.yaml` to the existing services.** The Blueprint in this repository
+> describes only a **single** service (named `staff-directory`, not the live
+> `staff-directory-gc6d`) and does **not** reproduce the two-service topology. Applying or syncing
+> it could create a **duplicate service** or alter the working deployment. It is retained for
+> historical reference only. The live two-service topology has deliberately **not** been added to
+> the Blueprint in this task.
 
 In production the database is **PostgreSQL hosted by Supabase**, chosen automatically because
-`DATABASE_URL` is set. Data is kept across restarts; there is **no persistent disk and no
-`DB_FILE`** on the host. If `DATABASE_URL` is missing while `NODE_ENV=production`, the server
+`DATABASE_URL` is set. Live records are stored in that managed database, **not** on the service's
+own filesystem: there is **no persistent disk and no `DB_FILE`** on the host, and the Render
+instance's local storage is not where the data lives. A managed database is expected to keep its
+data independently of the application service, but **persistence across a restart or redeploy has
+not been verified end-to-end for this deployment** and should be confirmed with a real restart test
+before it is relied upon. If `DATABASE_URL` is missing while `NODE_ENV=production`, the server
 **refuses to start** rather than silently falling back to an ephemeral SQLite file.
 
-A `render.yaml` Blueprint is included in the repository, so connecting the repository to Render
-creates (or updates) the `staff-directory` web service with:
+The **backend** service (`staff-directory-gc6d`) uses these build settings:
 
 | Setting       | Value                                  |
 | ------------- | -------------------------------------- |
@@ -362,6 +394,9 @@ creates (or updates) the `staff-directory` web service with:
 | `NODE_ENV`     | `production`                                                                   |
 | `DATABASE_URL` | The Supabase **Session Pooler** connection string — a **secret**. Percent-encode reserved characters in the password. `render.yaml` marks it `sync: false`, so Render prompts for it and it is never committed. |
 | `DB_SSL_CA`    | `/etc/secrets/supabase-root-ca.crt` (the secret file below)                    |
+
+These variables belong to the **backend** service (`staff-directory-gc6d`). The **static frontend**
+service needs no database variables — it only serves `public/` and forwards `/api/*` to the backend.
 
 Leave `DB_SSL` unset: TLS is verified by default, and the driver ignores any TLS query parameters
 inside `DATABASE_URL`, so `DB_SSL` / `DB_SSL_CA` are the single source of truth. Do **not** set
@@ -399,6 +434,56 @@ transaction that rolls back on any conflict, primary-key ids and the stored pass
 preserved, and each identity sequence is advanced afterwards. `--include-sessions` also copies
 `admin_sessions` (skipped by default so every administrator signs in again). Credentials are never
 printed. Run `--verify`, then the import, before relying on the deployed service.
+
+> **Run the import at most once.** `npm run db:migrate:pg` is a **one-time** import. Do **not**
+> re-run it against the production database. The script refuses to run when the destination already
+> contains rows, but treat re-running as forbidden regardless. Never run `npm run db:init` or
+> `npm run db:seed`, and never set `SEED_ON_STARTUP`, against the production database — the
+> standalone seed script has **no production guard** and writes the fictional sample data to
+> whichever database `DATABASE_URL` selects. If you are unsure which database a command will touch,
+> stop and confirm the engine first (Section 7).
+
+#### Safe post-deployment verification (read-only)
+
+After a deploy, verify the live services **without changing any data**:
+
+1. `GET https://staff-directory-gc6d.onrender.com/api/health` returns HTTP 200.
+2. The frontend loads at `https://siwes-staff-directory-static.onrender.com/` and lists staff —
+   this is a `GET` only and modifies nothing.
+3. The frontend's `/api/*` calls reach the backend (open the browser Network tab; responses come
+   from the backend URL above).
+4. Sign in with the **existing** administrator account. Do not reset, recreate or re-seed the
+   password.
+5. Confirm a trivial `GET /api/staff/1` returns a record.
+
+Write operations (Add Staff, task changes) should be exercised only on a **throwaway** database, or
+after the organization has authorized a test record in production. Data persistence across a
+restart or redeploy has **not** been verified and must not be claimed as tested until a real
+restart test is performed.
+
+#### Backups, restore and rollback
+
+- **Backups.** The Supabase project provides its own backup and point-in-time facilities — confirm
+  the current schedule and retention in the Supabase dashboard. A manual logical backup can be
+  taken with `pg_dump` against the Session Pooler using the same credentials, but run it
+  **read-only** and never paste the dump or the connection string into documentation, chat or the
+  repository.
+- **Restore.** A restore **overwrites** existing data. It must only be attempted **with explicit
+  authorization and a verified backup**, and ideally into a scratch project first. This repository
+  contains **no** restore script; do not improvise one from these notes.
+- **Rollback (application).** To roll back a bad deploy, redeploy the previous Render build (or the
+  previous commit) from the Render dashboard. Rolling back the *application* does **not** undo
+  database rows written after that build; coordinate the two if a schema change is involved.
+
+#### Production troubleshooting
+
+| Symptom | Likely cause / check |
+| ------- | -------------------- |
+| Backend will not start; log says it "refuses to start" | `DATABASE_URL` is missing while `NODE_ENV=production`. Set it on the **backend** service only. |
+| `self-signed certificate in certificate chain` | The CA secret file is missing, or `DB_SSL_CA` does not point at `/etc/secrets/supabase-root-ca.crt`. Re-add the secret file (see above). |
+| `password authentication failed` | Wrong or rotated database password, or reserved characters in `DATABASE_URL` that are not percent-encoded. Do not print the value while debugging. |
+| Frontend loads but the directory shows errors | The `/api` rewrite is missing or points at the wrong backend. Confirm it in the Render dashboard — no repository file defines it. |
+| Data appears to "reset" after a deploy | The backend is actually using SQLite, not PostgreSQL. Confirm `DATABASE_URL` is set on the backend service. |
 
 ---
 
@@ -933,6 +1018,9 @@ npm run db:init
 It is safe to run as many times as needed — existing rows are not duplicated. Check that
 `data/staff-directory.db` exists afterwards.
 
+> This advice is for the **local SQLite** database. The hosted deployment uses PostgreSQL and must
+> **not** be re-seeded; see the warnings in Sections 7 and 8.
+
 ### `npm run dev` / Nodemon
 
 - It is supposed to keep running and watch your files; it is not going to return to the prompt.
@@ -946,8 +1034,10 @@ It is safe to run as many times as needed — existing rows are not duplicated. 
 That normally means the server is not running. Check the terminal running the server for errors and
 confirm the server was started. For a **local SQLite** setup the database is created and seeded
 automatically at startup, so restarting the server normally restores it; `npm run db:init` can also
-be run manually. A **hosted deployment uses PostgreSQL**, whose data persists independently of the
-service.
+be run manually. In a **hosted deployment the data lives in the managed Supabase PostgreSQL
+database**, separate from the application service's own filesystem, so it is not tied to the
+ephemeral instance storage; end-to-end persistence across a restart or redeploy has **not yet been
+tested** (see Section 8).
 
 ---
 
@@ -992,8 +1082,10 @@ The project is a demonstration, and its current limitations are intentional:
   cannot edit or delete them yet. Staff records created through the interface make the seed
   counts differ from the original 18 until the sample data is reset.
 - **Local database can be reset on demand** — the local SQLite database is re-created and
-  re-seeded by the seed script; the hosted PostgreSQL database persists across restarts and
-  redeploys.
+  re-seeded by the seed script. In the hosted deployment, records live in the managed Supabase
+  PostgreSQL database rather than on the service's filesystem, so they are not tied to an ephemeral
+  instance; however, **persistence across a restart or redeploy has not been verified end-to-end**
+  and should be confirmed by an actual restart test.
 
 Possible future directions (not implemented) would include an administrative interface for
 editing and deleting staff, role-based permissions, and audit logs.
