@@ -550,10 +550,13 @@ The following limitations are genuine and are stated plainly rather than present
    consequence of choosing a fast, SQL-native SQLite driver.
 7. **Partial automated test coverage.** A maintained automated test suite now exists and is
    committed to the repository (run with `npm test`, using Node's built-in `node --test`). It
-   exercises configuration, both SQL dialects, the repository layer and error handling, and the
-   one-time migration logic — 119 tests at the time of writing. It does **not** cover the front end
-   or the HTTP controllers end-to-end, and it runs against SQLite, so those areas would still need a
-   fresh manual pass. The larger verification recorded in Chapter Six was performed with throwaway
+   exercises configuration, both SQL dialects, the repository layer and error handling, the
+   one-time migration logic, and the HTTP API end-to-end — `test/api.test.js` starts the real Express
+   application on an ephemeral port and drives the controllers, middleware and routes over HTTP —
+   119 tests at the time of writing. The suite runs against SQLite only: it does **not** cover the
+   front-end browser workflows (search, filters, profile modal, Add Staff, Tasks and Dashboard
+   interaction) or the application running against the live PostgreSQL database, so those still need
+   a manual pass. The larger verification recorded in Chapter Six was performed with throwaway
    harness scripts that are not part of the repository.
 8. **Limited data-entry surface.** Administrators can create staff members and fully manage tasks,
    but staff records cannot yet be edited or deleted through the interface, and there is no audit
@@ -1035,7 +1038,7 @@ No server hardware, GPU, dedicated storage array or network-attached storage is 
 
 | Software | Version used | Purpose |
 |---|---|---|
-| Node.js | 22 or newer (verified on 24.20.0) | JavaScript runtime for the server |
+| Node.js | 22 or newer (`package.json` declares `engines.node` as `>=22`; the Render service sets `NODE_VERSION=22`) | JavaScript runtime for the server |
 | npm | Bundled with Node.js | Dependency installation and script execution |
 
 **Back-end**
@@ -3127,8 +3130,10 @@ staff-directory/
 |---|---|---|
 | `start` | `node server.js` | Run the application |
 | `dev` | `nodemon server.js` | Run with automatic restart on file changes |
+| `test` | `node --test` | Run the automated test suite (Node's built-in test runner) |
 | `db:init` | `node src/database/seed.js` | Create the schema and seed the sample data |
 | `db:seed` | `node src/database/seed.js` | Alias of `db:init` |
+| `db:migrate:pg` | `node scripts/migrate-sqlite-to-postgres.js` | One-time import of the local SQLite data into PostgreSQL; never run automatically |
 
 ### C.5 Dependencies
 
@@ -3195,6 +3200,13 @@ The following were **not** tested and no claim is made about them: load and perf
 concurrent multi-user access, cross-browser and cross-platform compatibility, penetration testing,
 accessibility audit against a formal standard, behaviour with real organizational data, and data
 persistence across a restart or redeploy.
+
+**Coverage note on the automated suite.** The committed suite (`npm test`) exercises the HTTP API
+end-to-end — `test/api.test.js` starts the real Express application on an ephemeral port and drives
+the controllers, middleware and routes over HTTP — together with the repository, dialect,
+configuration, error-handling and migration layers, all against SQLite. It does **not** exercise the
+front-end browser workflows (search, filters, profile modal, Add Staff, Tasks and Dashboard
+interaction) or the application against a live PostgreSQL database; those remain manual.
 
 Two items previously listed here have since been partly addressed and are recorded in Appendix F:
 **encrypted transport** is in use (the live backend verifies the Supabase TLS certificate against the
