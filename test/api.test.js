@@ -253,3 +253,78 @@ test('logout clears the session and invalid credentials are rejected', async () 
   adminCookie = parseCookie(goodLogin.headers);
   assert.ok(adminCookie.startsWith('admin_session='));
 });
+
+async function loginWithValidCredentials() {
+  return request(
+    '/api/auth/login',
+    Object.assign(
+      jsonBody({ email: 'api.admin@example.com', password: 'supersecret1' }),
+      { method: 'POST' }
+    )
+  );
+}
+
+test('login responses are not storable by caches', async () => {
+  const response = await loginWithValidCredentials();
+
+  assert.equal(response.status, 200);
+  assert.equal(response.headers.get('cache-control'), 'no-store');
+});
+
+test('authenticated /api/auth/me returns 200 and is not storable by caches', async () => {
+  const login = await loginWithValidCredentials();
+  const sessionCookie = parseCookie(login.headers);
+
+  const response = await request('/api/auth/me', { headers: { cookie: sessionCookie } });
+
+  assert.equal(response.status, 200);
+  assert.equal(response.body.data.admin.username, 'ApiAdmin');
+  assert.equal(response.headers.get('cache-control'), 'no-store');
+});
+
+test('anonymous /api/auth/me returns 401 and is not storable by caches', async () => {
+  const response = await request('/api/auth/me');
+
+  assert.equal(response.status, 401);
+  assert.equal(response.headers.get('cache-control'), 'no-store');
+});
+
+test('an anonymous conditional GET to /api/auth/me cannot turn a 401 into a 304', async () => {
+  const first = await request('/api/auth/me');
+
+  assert.equal(first.status, 401);
+
+  const etag = first.headers.get('etag');
+  assert.ok(etag, 'expected the 401 response to carry an ETag');
+
+  const conditional = await request('/api/auth/me', { headers: { 'if-none-match': etag } });
+
+  assert.equal(conditional.status, 401);
+  assert.equal(conditional.body.success, false);
+});
+
+test('logout responses are not storable by caches', async () => {
+  const login = await loginWithValidCredentials();
+  const sessionCookie = parseCookie(login.headers);
+
+  const response = await request('/api/auth/logout', {
+    method: 'POST',
+    headers: { cookie: sessionCookie }
+  });
+
+  assert.equal(response.status, 200);
+  assert.equal(response.headers.get('cache-control'), 'no-store');
+});
+
+test('public directory endpoints keep their ETag revalidation behaviour', async () => {
+  const departments = await request('/api/departments');
+  const staff = await request('/api/staff');
+
+  assert.equal(departments.status, 200);
+  assert.ok(departments.headers.get('etag'), 'expected departments to carry an ETag');
+  assert.equal(departments.headers.get('cache-control'), null);
+
+  assert.equal(staff.status, 200);
+  assert.ok(staff.headers.get('etag'), 'expected staff to carry an ETag');
+  assert.equal(staff.headers.get('cache-control'), null);
+});
