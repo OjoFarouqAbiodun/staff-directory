@@ -84,7 +84,7 @@ Only the following technologies are used:
 | Layer      | Technology                        |
 | ---------- | --------------------------------- |
 | Markup     | HTML5                             |
-| Styling    | Tailwind CSS, loaded via CDN      |
+| Styling    | Tailwind CSS 3.4.17, compiled to a local stylesheet |
 | Frontend   | Vanilla JavaScript (no framework) |
 | Runtime    | Node.js                           |
 | Web server | Express.js                        |
@@ -93,9 +93,11 @@ Only the following technologies are used:
 | API style  | REST, using native browser `fetch()` |
 | Dev server | Nodemon                           |
 
-There is no front-end framework, no build step, no bundler, no ORM and no external runtime
-dependency beyond Tailwind's CDN script. Frontend and backend code communicates only through
-the REST API.
+There is no front-end framework, no bundler and no ORM. Tailwind's utility CSS is compiled ahead
+of time by a local build step (`npm run build:css`, section 8) into
+`public/assets/css/tailwind.css`, which is committed and loaded as a normal same-origin
+stylesheet — there is no runtime CDN dependency. Frontend and backend code communicates only
+through the REST API.
 
 ---
 
@@ -103,6 +105,8 @@ the REST API.
 
 ```text
 staff-directory/
+├── tailwind.config.js              # Tailwind build config (scans index.html and assets/js)
+├── tailwind.input.css              # Tailwind source (build entry point for `npm run build:css`)
 ├── data/
 │   └── staff-directory.db          # Local SQLite database (created by the seed script)
 │
@@ -111,6 +115,7 @@ staff-directory/
 │   │                               # states, staff grid, add-staff and tasks views, modals
 │   └── assets/
 │       ├── css/
+│       │   ├── tailwind.css        # Compiled Tailwind utilities (generated; committed)
 │       │   └── styles.css          # Small custom CSS on top of Tailwind
 │       ├── images/
 │       │   └── placeholders/
@@ -245,8 +250,9 @@ npm install
 ```
 
 This downloads the dependencies listed in `package.json` — `express`, `better-sqlite3` and
-`pg` for running the application, and `nodemon` as a development dependency. It also regenerates
-`node_modules/`, the folder that holds the installed packages.
+`pg` for running the application, and `nodemon` and `tailwindcss` as development dependencies
+(Tailwind's CLI builds the stylesheet; see section 8). It also regenerates `node_modules/`, the
+folder that holds the installed packages.
 
 After this finishes, continue to section 7 to create the database.
 
@@ -337,6 +343,23 @@ http://localhost:3000
 The server listens on port 3000 by default. To use a different port, set the `PORT`
 environment variable, for example `PORT=4000 npm start` (PowerShell:
 `$env:PORT=4000; npm start`).
+
+### Building the CSS
+
+The interface's Tailwind utility stylesheet is compiled ahead of time — it is not fetched from a
+CDN at runtime. The compiled file `public/assets/css/tailwind.css` is committed to the repository,
+so the application works immediately after `npm install` with no build needed. Rebuild it only when
+you add or change Tailwind classes in `public/index.html` or in a file under `public/assets/js/`:
+
+```bash
+npm run build:css
+```
+
+The command runs the Tailwind CLI (the `tailwindcss` development dependency), reads the source
+`tailwind.input.css` at the repository root, and writes the minified output to
+`public/assets/css/tailwind.css`. The page loads `tailwind.css` **before** `styles.css`; `styles.css`
+holds the small hand-written custom CSS and is never generated. If the interface ever looks
+unstyled, the stylesheet build or the link order is the first thing to check (section 15).
 
 ### Deploying to Render (PostgreSQL/Supabase)
 
@@ -986,6 +1009,19 @@ those widths were explicitly inspected.
 ---
 
 ## 15. Troubleshooting
+
+### The page looks unstyled, or a new Tailwind class has no effect
+
+The Tailwind stylesheet is generated, not loaded from a CDN. If you edited `public/index.html` or a
+file under `public/assets/js/`, rebuild the stylesheet and hard-refresh the browser:
+
+```bash
+npm run build:css
+```
+
+Confirm that `public/assets/css/tailwind.css` exists and that `index.html` links it **before**
+`styles.css`. If `npm run build:css` reports that `tailwindcss` is not found, run `npm install`
+first.
 
 ### Port 3000 already in use
 

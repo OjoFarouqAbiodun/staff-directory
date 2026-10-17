@@ -1,0 +1,11 @@
+/*
+ * Tailwind CSS entry point for the build step.
+ *
+ * `npm run build:css` compiles this file into the minified
+ * `public/assets/css/tailwind.css`, which the page loads. The hand-written
+ * custom layer, `public/assets/css/styles.css`, is unchanged and is loaded
+ * separately after the compiled stylesheet.
+ */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;

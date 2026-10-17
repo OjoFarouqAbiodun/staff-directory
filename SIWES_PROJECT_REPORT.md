@@ -170,8 +170,8 @@ web-based Staff Directory Web Application that presents staff information throug
 interface.
 
 The system was developed as a three-tier client–server application. The presentation tier was built
-with HTML5, Tailwind CSS (loaded via a Content Delivery Network) and Vanilla JavaScript, with no
-client-side framework. The business and data-access tiers were implemented in Node.js using the
+with HTML5, Tailwind CSS (compiled ahead of time to a static stylesheet) and Vanilla JavaScript, with
+no client-side framework. The business and data-access tiers were implemented in Node.js using the
 Express.js framework, organised into clearly separated routes, controllers, repositories and
 middleware. For local development and automated testing, persistent storage is provided by a SQLite
 database accessed through the better-sqlite3 driver, which exposes a synchronous, SQL-native
@@ -523,11 +523,14 @@ The following limitations are genuine and are stated plainly rather than present
    seed process for demonstration and testing. They do not represent real employees of Rids Cloud
    Digital Solution or of any other organization. The records use reserved example-domain email
    addresses so that they cannot be mistaken for, or accidentally contact, real people.
-2. **Runtime internet dependency.** Tailwind CSS is loaded from a public Content Delivery Network
-   using the standard `<script src="https://cdn.tailwindcss.com">` element in `index.html`. If the
-   client machine has no internet access, the framework's stylesheet will not load and the interface
-   will render as unstyled HTML. A production deployment would compile the utility classes locally
-   at build time and remove this dependency.
+2. **One CSS build step, no runtime internet dependency.** The interface previously loaded Tailwind
+   CSS at runtime from a public Content Delivery Network (`https://cdn.tailwindcss.com`). That
+   dependency has been removed: the utility classes are now compiled ahead of time into
+   `public/assets/css/tailwind.css`, which is committed and served as a normal same-origin file, so
+   the interface no longer needs internet access to render correctly and can no longer show a flash
+   of unstyled content. The trade-off is that the compiled file must be regenerated
+   (`npm run build:css`) whenever a Tailwind class is added or changed in `index.html` or in the
+   JavaScript modules.
 3. **Two database engines in two roles.** Local development and the automated test suite use a
    single SQLite file at `data/staff-directory.db`; the live deployment uses a hosted PostgreSQL
    database (Supabase) selected automatically when `DATABASE_URL` is set. SQLite remains appropriate
@@ -562,9 +565,12 @@ The following limitations are genuine and are stated plainly rather than present
    but staff records cannot yet be edited or deleted through the interface, and there is no audit
    log recording which administrator performed which action. The browser session cookie is the only
    authorization carrier.
-9. **Tailwind CDN build consideration.** Because the CDN build scans served source text for class
-   names, some class strings in the JavaScript are deliberately written as complete literal strings.
-   This is a constraint of the chosen loading method, and it would be removed by a build step.
+9. **Class names must stay literal.** Tailwind's build step emits only the utility classes it finds in
+   the files named by `tailwind.config.js` (`public/index.html` and `public/assets/js/**/*.js`). The
+   status and priority colour classes are therefore written as complete literal strings rather than
+   assembled from fragments; composing a class name at runtime (for example `'bg-' + colour + '-100'`)
+   would produce a class that is never generated. This is a normal constraint of a static Tailwind
+   build and is why the JavaScript keeps those strings whole.
 10. **Deployment depends on external configuration.** Data persistence in production relies on the
     Supabase PostgreSQL service, and the front end reaches the API through an `/api` rewrite
     configured in the Render dashboard. Neither is defined in this repository, and the `render.yaml`
@@ -624,9 +630,10 @@ and the system is reachable from any device with a network connection, subject t
 controls in place.
 
 The corresponding disadvantages must be acknowledged. A web client depends on network availability
-and on a server that is running. Where client-side code depends on an external network resource — as
-this project does with its Tailwind CSS CDN reference — the application is degraded when that
-resource is unreachable. Web systems also introduce a security surface that does not exist in a
+and on a server that is running. Where client-side code depends on an external network resource, the
+application is degraded when that resource is unreachable; this is a general risk of externally hosted
+assets rather than a requirement of the architecture. Web systems also introduce a security surface
+that does not exist in a
 single-user desktop program: data crosses the network and reaches the browser as text, so both the
 transport and the client-side rendering must be handled carefully.
 
@@ -756,12 +763,14 @@ Responsive design matters here because the intended user is a member of staff wh
 with a large monitor, carrying a tablet, or using a phone in a corridor. A fixed-width page forces
 such a user to pan horizontally or zoom out, which is a well-documented usability failure.
 
-A limitation of the approach adopted in this project should be noted: Tailwind CSS is loaded at
-runtime from a CDN rather than compiled locally. The utility classes are therefore generated in the
-browser after the page loads, rather than being produced at build time. This is convenient for a
-project of this size, and it works correctly, but it is not the recommended approach for production
-because it requires an internet connection at runtime and because it applies styling only after
-initial load, which can cause a brief flash of unstyled content.
+A limitation of the approach adopted in this project should be noted: an earlier version of this
+project loaded Tailwind CSS at runtime from a CDN rather than compiling it locally, so the utility
+classes were generated in the browser after the page loads rather than being produced at build time.
+That is convenient for a project of this size, and it works correctly, but it is not the recommended
+approach for production because it requires an internet connection at runtime and because it applies
+styling only after initial load, which can cause a brief flash of unstyled content. The current build
+compiles the utility classes ahead of time (`npm run build:css`) into a committed, same-origin
+stylesheet, which removes both effects.
 
 Accessibility is closely related to but distinct from responsiveness. Responsive design addresses
 *device capability*; accessibility addresses *user capability*, including users who navigate by
@@ -1028,7 +1037,7 @@ stack.
 | Storage | ~500 MB free for the application, dependencies and database | Database file is a few hundred kilobytes |
 | Display | 1024 x 768 or larger recommended; any size works | Interface is responsive from 375px upward |
 | Input | Keyboard and mouse or trackpad; touch supported | Search and filters require typing; cards are activated by tap or click |
-| Network | Required **during installation** and at **runtime** for the Tailwind CSS CDN reference | See Section 1.7, limitation 2. Local operation without internet is possible but the interface renders unstyled. |
+| Network | Required during installation and to rebuild the Tailwind CSS; **not** required at runtime | See Section 1.7, limitation 2. The compiled stylesheet is served from the application itself, so the interface renders correctly with no internet access. |
 
 No server hardware, GPU, dedicated storage array or network-attached storage is required.
 
@@ -1057,8 +1066,8 @@ No server hardware, GPU, dedicated storage array or network-attached storage is 
 | Technology | Role |
 |---|---|
 | HTML5 | Page structure, semantics and accessibility attributes |
-| Tailwind CSS (CDN) | Utility-first styling and responsive layout |
-| Vanilla JavaScript | All client behaviour; no framework or build step |
+| Tailwind CSS 3.4.17 (compiled locally) | Utility-first styling and responsive layout; built ahead of time by `npm run build:css` |
+| Vanilla JavaScript | All client behaviour; no framework or bundler (the only build step is the Tailwind CSS compile) |
 | Native `fetch()` API | HTTP requests to the REST API |
 
 **Browser**
@@ -1079,7 +1088,7 @@ modification.
 | Git | Version control; incremental commits during development |
 | GitHub | Private remote repository for the source code |
 | Browser developer tools | Inspecting the DOM, verifying API responses in the Network panel, checking the console for errors, and emulating responsive viewport widths |
-| `npm` | Managing dependencies and running the defined scripts (`start`, `dev`, `db:init`, `db:seed`) |
+| `npm` | Managing dependencies and running the defined scripts (`start`, `dev`, `build:css`, `test`, `db:init`, `db:seed`, `db:migrate:pg`) |
 
 ---
 
@@ -1671,10 +1680,13 @@ than hiding the sections.
 
 ### 5.1 Frontend Implementation
 
-The front end consists of one HTML document, one custom CSS file and nine JavaScript modules. It has
-**no build step**: the browser loads the files as written. This was a deliberate choice for a project
-of this size — there is no bundler, transpiler or package install required to run the interface,
-which makes the code directly readable and directly debuggable.
+The front end consists of one HTML document, two CSS files (one compiled, one hand-written) and nine
+JavaScript modules. The JavaScript has **no build step**: the browser loads the modules as written,
+with no bundler or transpiler, which keeps the code directly readable and directly debuggable.
+Tailwind's utility classes are the single exception — they are compiled ahead of time by
+`npm run build:css` into `public/assets/css/tailwind.css`, which is committed and loaded as a normal
+same-origin stylesheet. The compile scans `index.html` and the JavaScript modules, so the classes it
+emits reflect the classes present in those files.
 
 Scripts are loaded in dependency order in `index.html`: `api.js`, `ui.js`, `filters.js`, `modal.js`,
 `auth.js`, `staff-create.js`, `tasks.js`, `dashboard.js` and `app.js`. Each module publishes a small,
@@ -1739,10 +1751,11 @@ It also owns the three state containers. It toggles only elements that already e
 shell, creating no new state markup and inventing no layout. `updateStaffCount` ignores non-numeric
 or negative input and pluralizes correctly.
 
-One implementation constraint is recorded in the code comments: because the Tailwind CDN build scans
-served source text for class names, the status colour classes are kept as complete literal strings
-rather than being composed from fragments. Assembling them dynamically would break styling. This is
-a real constraint of the CDN approach and is discussed in Section 1.7.
+One implementation constraint is recorded in the code comments: Tailwind's build step emits only the
+classes it finds in the scanned source files, so the status colour classes are kept as complete
+literal strings rather than being composed from fragments. Assembling them dynamically would produce
+a class that the build never emits and so would break styling. This is a normal constraint of a
+static Tailwind build and is discussed in Section 1.7, limitation 9.
 
 #### 5.1.5 `public/assets/js/filters.js`
 
@@ -2217,8 +2230,9 @@ following are **not** implemented:
   served over HTTPS by Render and the backend verifies the database TLS certificate (Appendix F);
   TLS termination or a self-managed reverse proxy is not part of this repository.
 * **Rate limiting** — no request throttling is applied to login or other endpoints.
-* **Security headers** — no Content-Security-Policy, HSTS or related headers are set. Notably, a
-  strict Content-Security-Policy would need to allow the Tailwind CDN used by the interface.
+* **Security headers** — no Content-Security-Policy, HSTS or related headers are set. The interface
+  no longer loads any third-party script (the Tailwind stylesheet is served from the application
+  itself), so a strict Content-Security-Policy would not need to allow an external stylesheet host.
 * **Input length limits** on query parameters.
 * **Client-side write protection against CSRF beyond the `SameSite=Lax` cookie.** The only writes
   are login, logout, registration, staff creation and task operations, all performed with
@@ -2658,7 +2672,8 @@ read and verified independently, and new capability can be added without rewriti
 
 The limitations are equally instructive. The write surface is incomplete (staff records cannot yet be
 edited or deleted, there is no audit log, and authentication is a single role), the data is
-fictional, and the interface still depends on a CDN at runtime. The live deployment — a static
+fictional, and the Tailwind stylesheet must be rebuilt (`npm run build:css`) whenever its classes
+change. The live deployment — a static
 frontend paired with an Express/PostgreSQL backend — has been verified only at the level recorded in
 Appendix F: it has not been load or penetration tested, and persistence across a restart has not been
 confirmed. It is a working, well-tested demonstration of the design — one that now extends well beyond
@@ -2720,10 +2735,12 @@ the front end or the HTTP controllers end-to-end, and it runs against SQLite; ex
 surface and adding a PostgreSQL-backed run would allow regressions in those areas to be caught
 automatically.
 
-**Compiling the front-end assets locally.** Replacing the Tailwind CDN reference with a build step that
-compiles the required CSS locally would remove the runtime internet dependency, eliminate the flash of
-unstyled content, and remove the constraint that class names must remain literal strings in the
-JavaScript.
+**Compiling the front-end assets locally.** *Implemented.* The Tailwind CDN reference has been
+replaced by a local build (`npm run build:css`) that compiles the utility CSS to a committed
+`public/assets/css/tailwind.css`, loaded as a normal same-origin stylesheet. This removes the runtime
+internet dependency and the flash of unstyled content. Because Tailwind is a static scanner, class
+names must still appear literally in the scanned source; a future bundler would only change which
+files are scanned, not this requirement.
 
 **Additional data.** Where the organization has an existing authoritative list of staff, replacing the
 fictional seed data with real records — subject to consent and data-protection requirements — would
@@ -3029,8 +3046,10 @@ No administrator is seeded. The first account is created through `POST /api/auth
 ```
 staff-directory/
 ├── server.js                     Application entry point; creates the HTTP listener
-├── package.json                  Dependencies and scripts (start, dev, db:init, db:seed)
+├── package.json                  Dependencies and scripts (start, dev, build:css, test, db:init, db:seed, db:migrate:pg)
 ├── package-lock.json             Locked dependency versions
+├── tailwind.config.js            Tailwind build configuration (scans index.html and assets/js)
+├── tailwind.input.css            Tailwind source (build entry point for `npm run build:css`)
 ├── .gitignore                    Excludes node_modules and the local database file
 ├── README.md                     Project documentation
 ├── PROJECT_SPEC.md               Specification and requirements
@@ -3042,6 +3061,7 @@ staff-directory/
 ├── public/                       Front end, served statically by Express
 │   ├── index.html                Page structure, state containers, profile dialog, views
 │   └── assets/
+│       ├── css/tailwind.css        Compiled Tailwind utilities (generated, committed)
 │       ├── css/styles.css        Minimal custom CSS
 │       ├── js/api.js             HTTP client (fetch wrapper)
 │       ├── js/ui.js              DOM rendering and state containers
@@ -3130,6 +3150,7 @@ staff-directory/
 |---|---|---|
 | `start` | `node server.js` | Run the application |
 | `dev` | `nodemon server.js` | Run with automatic restart on file changes |
+| `build:css` | `tailwindcss -i ./tailwind.input.css -o ./public/assets/css/tailwind.css --minify` | Compile the Tailwind CSS stylesheet (output is committed) |
 | `test` | `node --test` | Run the automated test suite (Node's built-in test runner) |
 | `db:init` | `node src/database/seed.js` | Create the schema and seed the sample data |
 | `db:seed` | `node src/database/seed.js` | Alias of `db:init` |
@@ -3143,8 +3164,11 @@ staff-directory/
 | `better-sqlite3` | ^13.0.3 | Runtime | Synchronous SQLite driver (local development and tests) |
 | `pg` | ^8.23.1 | Runtime | PostgreSQL driver (production database) |
 | `nodemon` | ^3.1.10 | Development | Automatic restart |
+| `tailwindcss` | 3.4.17 | Development | Compiles the Tailwind CSS stylesheet for `build:css` |
 
-The front end has **no** dependencies: no framework, no bundler and no build step.
+The front end has **no runtime dependencies**: no framework and no bundler. Its one build step
+compiles Tailwind CSS (the `tailwindcss` development dependency) into
+`public/assets/css/tailwind.css`, which is committed and served as a static file.
 
 ---
 
